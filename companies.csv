@@ -1,0 +1,311 @@
+name,source,slug,url
+Cloudflare,greenhouse,cloudflare,
+Datadog,greenhouse,datadog,
+MongoDB,greenhouse,mongodb,
+HubSpot,greenhouse,hubspot,
+Stripe,greenhouse,stripe,
+Asana,greenhouse,asana,
+Discord,greenhouse,discord,
+Robinhood,greenhouse,robinhood,
+Coinbase,greenhouse,coinbase,
+Reddit,greenhouse,reddit,
+Dropbox,greenhouse,dropbox,
+Lyft,greenhouse,lyft,
+Pinterest,greenhouse,pinterest,
+Affirm,greenhouse,affirm,
+Instacart,greenhouse,instacart,
+Twilio,greenhouse,twilio,
+Okta,greenhouse,okta,
+Elastic,greenhouse,elastic,
+GitLab,greenhouse,gitlab,
+Coursera,greenhouse,coursera,
+Duolingo,greenhouse,duolingo,
+Roblox,greenhouse,roblox,
+Squarespace,greenhouse,squarespace,
+Zscaler,greenhouse,zscaler,
+Airbnb,greenhouse,airbnb,
+Figma,greenhouse,figma,
+Databricks,greenhouse,databricks,
+Pure Storage,greenhouse,purestorage,
+Anthropic,greenhouse,anthropic,
+Scale AI,greenhouse,scaleai,
+Waymo,greenhouse,waymo,
+Epic Games,greenhouse,epicgames,
+Riot Games,greenhouse,riotgames,
+Brex,greenhouse,brex,
+Airtable,greenhouse,airtable,
+Rubrik,greenhouse,rubrik,
+Twitch,greenhouse,twitch,
+Lucid Motors,greenhouse,lucidmotors,
+Virtu Financial,greenhouse,virtu,
+Mixpanel,greenhouse,mixpanel,
+Amplitude,greenhouse,amplitude,
+Nubank,greenhouse,nubank,
+Remote.com,greenhouse,remote,
+Gusto,greenhouse,gusto,
+Lattice,greenhouse,lattice,
+Culture Amp,greenhouse,cultureamp,
+Block,greenhouse,block,
+Klaviyo,greenhouse,klaviyo,
+Braze,greenhouse,braze,
+PagerDuty,greenhouse,pagerduty,
+Chime,greenhouse,chime,
+SoFi,greenhouse,sofi,
+Five9,greenhouse,five9,
+Sentry,greenhouse,getsentry,
+Toast,greenhouse,toasttab,
+Benchling,greenhouse,benchling,
+Natera,greenhouse,natera,
+Sardine,ashby,sardine,
+Browserbase,ashby,browserbase,
+Harvey,ashby,harvey,
+Ramp,ashby,ramp,
+Vercel,ashby,vercel,
+Cursor,ashby,cursor,
+Mercury,ashby,mercury,
+Notion,ashby,notion,
+Plaid,ashby,plaid,
+Cohere,ashby,cohere,
+Linear,ashby,linear,
+Modal,ashby,modal,
+Runway,ashby,runway,
+Pinecone,ashby,pinecone,
+Replit,ashby,replit,
+Anduril,ashby,anduril-industries,
+Retool,ashby,retool,
+Rippling,ashby,rippling,
+Writer,ashby,writer,
+Cognition,ashby,cognition,
+Physical Intelligence,ashby,physicalintelligence,
+Perplexity,ashby,perplexity,
+Groq,ashby,groq,
+dbt Labs,ashby,dbt-labs,
+Temporal,ashby,temporal,
+Netflix,lever,netflix,
+Palantir,lever,palantir,
+Spotify,lever,spotify,
+Wealthfront,lever,wealthfront,
+Visa,smartrecruiters,Visa,
+Bosch,smartrecruiters,Bosch,
+Ericsson,smartrecruiters,Ericsson,
+Unilever,smartrecruiters,Unilever,
+Siemens Healthineers,smartrecruiters,SiemensHealthineers,
+Kyndryl,smartrecruiters,Kyndryl,
+NTT Data,smartrecruiters,NTTData,
+Capgemini,smartrecruiters,Capgemini,
+Infosys,smartrecruiters,Infosys,
+Wipro,smartrecruiters,Wipro,
+Simplify Jobs,simplify,,https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/.github/scripts/listings.json
+Pfizer,workday,,https://pfizer.wd1.myworkdayjobs.com/PfizerCareers
+Intel,workday,,https://intel.wd1.myworkdayjobs.com/External
+Salesforce,workday,,https://salesforce.wd12.myworkdayjobs.com/External_Career_Site
+Target,workday,,https://target.wd5.myworkdayjobs.com/targetcareers
+Best Buy,workday,,https://bestbuy.wd5.myworkdayjobs.com/BestBuy_Campus
+CVS Health,workday,,https://cvshealth.wd1.myworkdayjobs.com/CVS_Health_Careers
+Cigna,workday,,https://cigna.wd1.myworkdayjobs.com/Cigna_External
+Thermo Fisher,workday,,https://thermofisher.wd5.myworkdayjobs.com/ThermoFisherCareers
+Abbott,workday,,https://abbott.wd5.myworkdayjobs.com/abbottcareers
+Workday,workday,,https://workday.wd5.myworkdayjobs.com/Workday
+Adobe,workday,,https://adobe.wd5.myworkdayjobs.com/external_experienced
+Johnson & Johnson,workday,,https://jnj.wd5.myworkdayjobs.com/JNJ
+Humana,workday,,https://humana.wd5.myworkdayjobs.com/Humana_External_Career_Site
+American Express,workday,,https://aexp.wd5.myworkdayjobs.com/AmexCareerSite
+Charles Schwab,workday,,https://schwab.wd1.myworkdayjobs.com/External
+Caterpillar,workday,,https://caterpillar.wd5.myworkdayjobs.com/CaterpillarCareers
+General Mills,workday,,https://generalmills.wd1.myworkdayjobs.com/GeneralMills
+Kraft Heinz,workday,,https://kraftheinz.wd1.myworkdayjobs.com/KraftHeinz_Careers
+Comcast,workday,,https://comcast.wd5.myworkdayjobs.com/Comcast_Careers
+PayPal,workday,,https://paypal.wd1.myworkdayjobs.com/jobs
+T-Mobile,workday,,https://tmobile.wd1.myworkdayjobs.com/External
+HP,workday,,https://hp.wd5.myworkdayjobs.com/ExternalCareerSite
+Palo Alto Networks,workday,,https://paloaltonetworks.wd1.myworkdayjobs.com/External
+CrowdStrike,workday,,https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers
+Fortinet,workday,,https://fortinet.wd1.myworkdayjobs.com/External
+Nutanix,workday,,https://nutanix.wd1.myworkdayjobs.com/Nutanix
+Akamai,workday,,https://akamai.wd1.myworkdayjobs.com/Global
+Juniper Networks,workday,,https://juniper.wd1.myworkdayjobs.com/External
+NetApp,workday,,https://netapp.wd1.myworkdayjobs.com/Careers
+Western Digital,workday,,https://wdc.wd1.myworkdayjobs.com/WDC
+Motorola Solutions,workday,,https://motorolasolutions.wd5.myworkdayjobs.com/Careers
+Zebra Technologies,workday,,https://zebra.wd1.myworkdayjobs.com/zebra
+Keysight,workday,,https://keysight.wd1.myworkdayjobs.com/External
+Lam Research,workday,,https://lamresearch.wd1.myworkdayjobs.com/LamCareers
+KLA,workday,,https://kla.wd1.myworkdayjobs.com/Search
+Analog Devices,workday,,https://adi.wd1.myworkdayjobs.com/External
+NXP Semiconductors,workday,,https://nxp.wd3.myworkdayjobs.com/careers
+TE Connectivity,workday,,https://te.wd10.myworkdayjobs.com/TEC
+3M,workday,,https://3m.wd1.myworkdayjobs.com/Search
+Honeywell,workday,,https://honeywell.wd5.myworkdayjobs.com/Honeywell
+Eli Lilly,workday,,https://lilly.wd5.myworkdayjobs.com/LillyCareers
+Bristol-Myers Squibb,workday,,https://bms.wd5.myworkdayjobs.com/BMS
+Amgen,workday,,https://amgen.wd5.myworkdayjobs.com/External
+Biogen,workday,,https://biogen.wd1.myworkdayjobs.com/Careers
+Regeneron,workday,,https://regeneron.wd5.myworkdayjobs.com/External
+Vertex Pharmaceuticals,workday,,https://vrtx.wd1.myworkdayjobs.com/vertex_careers
+Roche,workday,,https://roche.wd3.myworkdayjobs.com/roche-ext
+ExxonMobil,workday,,https://exxonmobil.wd5.myworkdayjobs.com/CareerSite
+Charter Communications,workday,,https://charter.wd5.myworkdayjobs.com/Spectrum
+SAIC,workday,,https://saic.wd5.myworkdayjobs.com/External
+ManTech,workday,,https://mantech.wd1.myworkdayjobs.com/External
+Leidos,workday,,https://leidos.wd5.myworkdayjobs.com/External
+Raytheon,workday,,https://raytheon.wd5.myworkdayjobs.com/RTXCORP
+Lockheed Martin,workday,,https://lmcocareers.wd5.myworkdayjobs.com/LMCareers
+Boeing,workday,,https://boeing.wd1.myworkdayjobs.com/EXTERNAL_CAREERS
+Booz Allen Hamilton,workday,,https://boozallen.wd1.myworkdayjobs.com/External
+KPMG,workday,,https://kpmg.wd1.myworkdayjobs.com/KPMG_US_Careers
+EY,workday,,https://ey.wd5.myworkdayjobs.com/EY_External_Careers
+Accenture,workday,,https://accenture.wd3.myworkdayjobs.com/AccentureCareers
+McKinsey,workday,,https://mckinsey.wd5.myworkdayjobs.com/Search
+Deloitte,workday,,https://deloitte.wd1.myworkdayjobs.com/DTUSCareers
+Merck,workday,,https://merck.wd5.myworkdayjobs.com/MSD
+UnitedHealth Group,workday,,https://uhg.wd5.myworkdayjobs.com/Careers
+Ford,workday,,https://ford.wd12.myworkdayjobs.com/Ford_Careers
+General Motors,workday,,https://generalmotors.wd5.myworkdayjobs.com/Careers_GM
+Rivian,workday,,https://rivian.wd5.myworkdayjobs.com/Rivian
+Disney,workday,,https://disney.wd5.myworkdayjobs.com/disneycareer
+Warner Bros Discovery,workday,,https://wbd.wd5.myworkdayjobs.com/wbd
+Shopify,workday,,https://shopify.wd5.myworkdayjobs.com/Shopify
+DoorDash,workday,,https://doordash.wd5.myworkdayjobs.com/DoorDash
+Uber,workday,,https://uber.wd5.myworkdayjobs.com/ATG_External_Careers
+Snap,workday,,https://snap.wd1.myworkdayjobs.com/Snap
+Verizon,workday,,https://verizon.wd1.myworkdayjobs.com/External
+Broadcom,workday,,https://broadcom.wd1.myworkdayjobs.com/External_Career
+Cyberark,workday,,https://cyberark.wd1.myworkdayjobs.com/CyberArk
+Tenable,workday,,https://tenable.wd1.myworkdayjobs.com/External
+Rapid7,workday,,https://rapid7.wd5.myworkdayjobs.com/External
+Mastercard,workday,,https://mastercard.wd1.myworkdayjobs.com/Campus
+Cisco,workday,,https://cisco.wd5.myworkdayjobs.com/Cisco_Careers
+SAP,workday,,https://sap.wd3.myworkdayjobs.com/SAP
+HSBC,workday,,https://hsbc.wd3.myworkdayjobs.com/HSBCcareers
+IBM,workday,,https://ibm.wd12.myworkdayjobs.com/External_Jobs
+Sony (US),workday,,https://sonyglobal.wd5.myworkdayjobs.com/SonyGlobalCareers
+Toyota (US),workday,,https://toyota.wd5.myworkdayjobs.com/TMNA
+Volkswagen (US),workday,,https://vwgoa.wd3.myworkdayjobs.com/VWGOA
+HPE,workday,,https://hpe.wd5.myworkdayjobs.com/Jobsathpe
+Applied Materials,workday,,https://amat.wd1.myworkdayjobs.com/External
+JPMorgan Chase,workday,,https://jpmc.wd5.myworkdayjobs.com/JPMCCareers
+Goldman Sachs,workday,,https://goldman.wd1.myworkdayjobs.com/GoldmanSachs
+Wells Fargo,workday,,https://wellsfargo.wd5.myworkdayjobs.com/External
+Qualcomm,workday,,https://qualcomm.wd5.myworkdayjobs.com/External
+Dell Technologies,workday,,https://dell.wd1.myworkdayjobs.com/External
+L3Harris,workday,,https://l3harris.wd5.myworkdayjobs.com/External
+BAE Systems,workday,,https://baesystems.wd3.myworkdayjobs.com/BAE
+Cummins,workday,,https://cummins.wd5.myworkdayjobs.com/External
+Parker Hannifin,workday,,https://parker.wd5.myworkdayjobs.com/Parker
+Eaton,workday,,https://eaton.wd1.myworkdayjobs.com/External
+Corning,workday,,https://corning.wd5.myworkdayjobs.com/External
+Medtronic,workday,,https://medtronic.wd1.myworkdayjobs.com/MedtronicCareers
+Stryker,workday,,https://stryker.wd1.myworkdayjobs.com/StrykerCareers
+Boston Scientific,workday,,https://bostonscientific.wd1.myworkdayjobs.com/BostonScientificCareers
+Hologic,workday,,https://hologic.wd1.myworkdayjobs.com/HologicCareers
+Intuitive Surgical,workday,,https://isrg.wd1.myworkdayjobs.com/da_Vinci_Careers
+Zimmer Biomet,workday,,https://zimmerbiomet.wd5.myworkdayjobs.com/ZimmerBiomet
+Textron,workday,,https://textron.wd5.myworkdayjobs.com/textron
+Jacobs,workday,,https://jacobs.wd5.myworkdayjobs.com/JobsatJacobs
+Parsons,workday,,https://parsons.wd5.myworkdayjobs.com/Search
+MITRE,workday,,https://mitre.wd5.myworkdayjobs.com/MITRE
+Battelle,workday,,https://battelle.wd5.myworkdayjobs.com/BattelleJobs
+Travelers,workday,,https://travelers.wd5.myworkdayjobs.com/External
+Marsh McLennan,workday,,https://mmc.wd1.myworkdayjobs.com/MMC
+Aon,workday,,https://aon.wd1.myworkdayjobs.com/Aon_Careers
+Willis Towers Watson,workday,,https://wtw.wd1.myworkdayjobs.com/WTW
+FIS,workday,,https://fisglobal.wd1.myworkdayjobs.com/FIS
+Jack Henry,workday,,https://jackhenry.wd1.myworkdayjobs.com/JackHenryCareers
+SS&C Technologies,workday,,https://ssc.wd1.myworkdayjobs.com/SSCCareers
+FactSet,workday,,https://factset.wd1.myworkdayjobs.com/FactSetCareers
+S&P Global,workday,,https://spgi.wd1.myworkdayjobs.com/S_and_P_Global
+Intercontinental Exchange,workday,,https://ice.wd5.myworkdayjobs.com/ICE
+Principal Financial,workday,,https://principal.wd5.myworkdayjobs.com/PrincipalCareers
+Aflac,workday,,https://aflac.wd5.myworkdayjobs.com/Aflac
+Progressive Insurance,workday,,https://progressive.wd5.myworkdayjobs.com/progressive_careers
+Nationwide,workday,,https://nationwide.wd5.myworkdayjobs.com/careers
+Unum Group,workday,,https://unum.wd5.myworkdayjobs.com/Unum
+Lincoln National,workday,,https://lincoln.wd5.myworkdayjobs.com/Lincoln
+Google,custom,,https://www.google.com/about/careers/applications/jobs/results/?q=intern
+Microsoft,custom,,https://jobs.careers.microsoft.com/global/en/search?q=intern
+Amazon,custom,,https://www.amazon.jobs/en/search?base_query=intern
+Apple,custom,,https://jobs.apple.com/en-us/search?search=intern
+NVIDIA,custom,,https://www.nvidia.com/en-us/about-nvidia/careers/?search=intern
+Qualcomm,custom,,https://careers.qualcomm.com/careers/search-jobs?keywords=intern
+Micron,custom,,https://careers.micron.com/careers?query=intern
+Texas Instruments,custom,,https://careers.ti.com/search-jobs/intern
+AMD,custom,,https://careers.amd.com/careers-home/jobs?keywords=intern
+Lowe's,custom,,https://talent.lowes.com/us/en/search-results?keywords=intern
+Home Depot,custom,,https://careers.homedepot.com/job-search-results/?keyword=intern
+Walmart,custom,,https://careers.walmart.com/results?q=intern
+Walgreens,custom,,https://jobs.walgreens.com/en/search-jobs/intern
+Bank of America,custom,,https://careers.bankofamerica.com/en-us/job-search?search=intern
+Wells Fargo,custom,,https://www.wellsfargo.com/about/careers/
+Capital One,custom,,https://www.capitalonecareers.com/search-jobs/intern
+Citi,custom,,https://jobs.citi.com/search-jobs/intern
+Truist,custom,,https://careers.truist.com/us/en/search-results?keywords=intern
+PNC,custom,,https://careers.pnc.com/global/en/search-results?keywords=intern
+Goldman Sachs,custom,,https://www.goldmansachs.com/careers/students
+Morgan Stanley,custom,,https://www.morganstanley.com/careers/career-opportunities-search
+Fidelity,custom,,https://jobs.fidelity.com/
+Discover,custom,,https://jobs.discover.com/search-jobs/intern
+Lockheed Martin,custom,,https://www.lockheedmartinjobs.com/search-jobs/intern
+Northrop Grumman,custom,,https://www.northropgrumman.com/jobs/?search=intern
+Boeing,custom,,https://jobs.boeing.com/search-jobs/intern
+L3Harris,custom,,https://careers.l3harris.com/search-jobs/intern
+Booz Allen,custom,,https://careers.boozallen.com/jobs/search?keyword=intern
+CACI,custom,,https://careers.caci.com/global/en/search-results?keywords=intern
+General Motors,custom,,https://search-careers.gm.com/en/jobs/?search=intern
+SpaceX,custom,,https://www.spacex.com/careers/jobs?department=Internship
+Rivian,custom,,https://careers.rivian.com/careers-home/jobs?keywords=intern
+John Deere,custom,,https://jobs.deere.com/search/?q=intern
+Siemens,custom,,https://jobs.siemens.com/careers?query=intern
+Disney,custom,,https://jobs.disneycareers.com/search-jobs/intern
+NBCUniversal,custom,,https://www.nbcunicareers.com/search-results?keywords=intern
+Comcast,custom,,https://jobs.comcast.com/search-jobs/intern
+Verizon,custom,,https://mycareer.verizon.com/jobs/?search=intern
+AT&T,custom,,https://www.att.jobs/search-jobs/intern
+USAA,custom,,https://www.usaajobs.com/search-jobs/intern
+KPMG,custom,,https://www.kpmguscareers.com/job-search/?keyword=intern
+Accenture,custom,,https://www.accenture.com/us-en/careers/jobsearch?jk=intern
+Boston Consulting Group,custom,,https://careers.bcg.com/search-results?keywords=intern
+Bain,custom,,https://www.bain.com/careers/find-a-role/
+Johnson & Johnson,custom,,https://www.careers.jnj.com/en/jobs/?search=intern
+Merck,custom,,https://jobs.merck.com/us/en/search-results?keywords=intern
+Abbott,custom,,https://www.jobs.abbott/us/en/search-results?keywords=intern
+Thermo Fisher,custom,,https://jobs.thermofisher.com/global/en/search-results?keywords=intern
+UnitedHealth Group,custom,,https://careers.unitedhealthgroup.com/search-jobs/intern
+Cigna,custom,,https://jobs.thecignagroup.com/us/en/search-results?keywords=intern
+Humana,custom,,https://careers.humana.com/job-search-results/?keyword=intern
+PepsiCo,custom,,https://www.pepsicojobs.com/main/jobs?keywords=intern
+Coca-Cola,custom,,https://careers.coca-colacompany.com/job-search-results/?keyword=intern
+Procter & Gamble,custom,,https://www.pgcareers.com/search-jobs/intern
+Kraft Heinz,custom,,https://careers.kraftheinz.com/careers/SearchJobs/intern
+General Mills,custom,,https://careers.generalmills.com/careers-home/jobs?keywords=intern
+UPS,custom,,https://www.jobs-ups.com/search-jobs/intern
+Delta Air Lines,custom,,https://delta.avature.net/careers/SearchJobs/?search=intern
+Southwest Airlines,custom,,https://careers.southwestair.com/search-results?keywords=intern
+TikTok,custom,,https://careers.tiktok.com/position?keywords=intern
+eBay,custom,,https://jobs.ebayinc.com/us/en/search-results?keywords=intern
+Samsung (US),custom,,https://samsung.com/us/careers/
+Jane Street,custom,,https://www.janestreet.com/join-jane-street/open-roles/
+D.E. Shaw,custom,,https://www.deshaw.com/careers/internships
+Two Sigma,custom,,https://www.twosigma.com/careers/
+Palantir,custom,,https://www.palantir.com/careers/
+Hugging Face,custom,,https://huggingface.co/jobs
+Anyscale,custom,,https://www.anyscale.com/careers
+Snowflake,custom,,https://careers.snowflake.com/us/en/search-results?keywords=intern
+Atlassian,custom,,https://www.atlassian.com/company/careers/all-jobs?search=intern
+Dell,custom,,https://jobs.dell.com/en/search-jobs/intern
+Salesforce,custom,,https://careers.salesforce.com/en/jobs/?search=intern
+ServiceNow,custom,,https://careers.servicenow.com/jobs/?q=intern
+JPMorgan Chase,custom,,https://careers.jpmorgan.com/global/en/jobs?search=intern
+Hudson River Trading,custom,,https://www.hudsonrivertrading.com/careers/?type=internships
+Jump Trading,custom,,https://www.jumptrading.com/careers/?keywords=intern
+Akuna Capital,custom,,https://akunacapital.com/careers
+Optiver,custom,,https://optiver.com/working-at-optiver/career-opportunities/
+Tower Research Capital,custom,,https://www.tower-research.com/open-positions
+Coupang,custom,,https://www.coupang.jobs/en/search/?q=intern
+DraftKings,custom,,https://careers.draftkings.com/jobs/?search=intern
+Khan Academy,custom,,https://www.khanacademy.org/careers
+Esri,custom,,https://www.esri.com/en-us/about/careers/job-search?q=intern
+Entegris,custom,,https://www.entegris.com/en/home/about-us/careers.html
+Oracle,oracle,,https://careers.oracle.com/jobs/#en/sites/jobsearch/requisitions?keyword=intern
+Ford,oracle,,https://efds.fa.em5.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions?keyword=intern
+PepsiCo,oracle,,https://pepsicojobs.com/main/jobs?keywords=intern
+Deloitte,oracle,,https://apply.deloitte.com/careers/SearchJobs/intern
