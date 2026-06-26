@@ -16,6 +16,7 @@ import re
 from datetime import datetime, timezone
 
 import discord
+from discord.ext import tasks
 from dotenv import load_dotenv
 
 import db
@@ -237,7 +238,7 @@ async def on_ready():
     scan_loop.start()
 
 
-@discord.ext.tasks.loop(minutes=SCAN_INTERVAL)
+@tasks.loop(minutes=SCAN_INTERVAL)
 async def scan_loop():
     try:
         await _run_scan()
