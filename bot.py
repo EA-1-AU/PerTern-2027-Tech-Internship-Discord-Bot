@@ -92,9 +92,16 @@ FORTUNE_500_WATCHLIST = {
 }
 
 MY_COMPANY_WATCHLIST = {
-    "crowdstrike", "palo alto networks",
+    "crowdstrike", "palo alto networks", "sentinelone", "wiz", "snyk",
+    "darktrace", "zscaler", "cloudflare", "okta", "cyberark", "tenable",
+    "rapid7", "splunk", "recorded future", "varonis", "secureworks",
+    "arctic wolf", "check point", "trend micro", "sailpoint", "trellix",
     "google", "alphabet", "microsoft", "amazon",
-    "deloitte", "booz allen", "leidos",
+    "deloitte", "pwc", "kpmg", "ernst & young", "ey",
+    "booz allen", "leidos", "saic", "mantech", "peraton", "caci",
+    "new relic", "dynatrace", "grafana labs", "hashicorp",
+    "alteryx", "domo", "thoughtspot", "microstrategy", "qlik",
+    "guidehouse",
 }
 
 _US_INDICATORS = [
@@ -230,6 +237,21 @@ def _matches_me(job: dict) -> tuple[bool, str]:
 
 def _is_internship(title: str) -> bool:
     return bool(re.search(r'\bintern(ship)?\b', title, re.IGNORECASE))
+
+
+def _2027_filter(job: dict) -> bool:
+    """Only allow jobs that are explicitly 2027 or undated non-Simplify sources."""
+    raw = f"{job.get('title','')} {job.get('description','')}".lower()
+    if "2026" in raw:
+        return False
+    term = job.get("term") or ""
+    yr   = re.search(r'(20\d{2})', term)
+    if yr:
+        return yr.group(1) == "2027"
+    # Simplify repos are named "Summer2026" — undated Simplify = 2026 by default
+    if job.get("source", "").lower() == "simplify":
+        return False
+    return True
 
 
 # ── Embeds ────────────────────────────────────────────────────────────────────
@@ -462,6 +484,8 @@ async def _run_scan(label: str = "") -> int:
         for job in raw_jobs:
             if not _is_internship(job.get("title", "")):
                 continue
+            if not _2027_filter(job):
+                continue
             tag_job(job)
             match, reason = _matches_me(job)
             if not match:
@@ -658,6 +682,33 @@ async def slash_status(interaction: discord.Interaction):
         timestamp=datetime.datetime.now(timezone.utc),
     )
     await interaction.response.send_message(embed=em, ephemeral=True)
+
+
+@tree.command(name="clear-dm", description="Delete all bot messages from your DMs (clean slate)")
+async def slash_clear_dm(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    dm = await _get_dm()
+    deleted = 0
+    try:
+        async for msg in dm.history(limit=500):
+            if msg.author.id == client.user.id:
+                try:
+                    await msg.delete()
+                    deleted += 1
+                    await asyncio.sleep(0.4)  # avoid rate limit
+                except Exception:
+                    pass
+    except Exception as e:
+        await interaction.followup.send(f"Error while clearing: {e}", ephemeral=True)
+        return
+    # Clear stored summary message ID so next scan creates a fresh one
+    db.set_bot_state(_SUMMARY_MSG_KEY, "")
+    await interaction.followup.send(
+        f"🗑️ Deleted **{deleted}** bot messages from your DMs. Summary will be recreated on next scan.",
+        ephemeral=True,
+    )
 
 
 # ── on_ready ──────────────────────────────────────────────────────────────────
