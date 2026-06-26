@@ -36,57 +36,101 @@ TOKEN            = os.getenv("DISCORD_TOKEN", "")
 MY_USER_ID       = int(os.getenv("MY_DISCORD_USER_ID", "0"))
 SCAN_INTERVAL    = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
 
-# ── Your personal preferences (auto-tuned from your resume) ──────────────────
-# Cybersecurity BS @ Anderson University | Python | GCP | Data Analytics | Linux
+# ── Personal filter — Ethan Austin ───────────────────────────────────────────
+# Degree : Cybersecurity BS + Business Minor @ Anderson University (SC) 2025-2028
+# Certs  : Google Cybersecurity, Google IT Support, Python for Everybody,
+#           Google AI Essentials, Google Cloud Fundamentals, Microsoft Excel
+# Tools  : Python, SQL, Linux, GCP, Power BI, Looker Studio, Excel
+# Exp    : Lowe's data/reporting intern (Power BI, GCP, Looker), Code Ninjas
+#           (Python, Lua, C#, JS), AU Makerspace (3D printing, tech support)
 
+# Only these categories pass — tightly matched to degree + certs + experience
 MY_CATEGORIES = {
-    "🔒 Cybersecurity",
-    "☁️ DevOps & Cloud",
-    "💻 Software Engineering",
-    "📊 Data Science",
-    "🔩 Data Engineering",
-    "📈 Data Analytics",
-    "🤖 AI & Machine Learning",
-    "⚙️ Operations & HR",       # IT Support / Systems Admin roles
+    "🔒 Cybersecurity",       # Primary degree
+    "☁️ DevOps & Cloud",      # GCP cert + Lowe's GCP experience
+    "📈 Data Analytics",      # Lowe's internship: Power BI, Looker, Excel
+    "📊 Data Science",        # Python cert + data analysis background
 }
 
-# Any of these keywords in title/description → always include regardless of category
-MY_KEYWORDS = [
+# Specific keywords that override category — must appear in the job TITLE
+# (title-only keeps this tight; broad terms in descriptions cause too much noise)
+MY_TITLE_KEYWORDS = [
+    # Cybersecurity — core degree focus
     "cybersecurity", "cyber security", "information security", "infosec",
-    "network security", "security analyst", "security engineer", "soc",
-    "incident response", "vulnerability", "penetration", "pen test",
-    "risk management", "compliance", "grc",
-    "cloud", "gcp", "google cloud", "aws", "azure",
-    "data analyst", "data analytics", "business intelligence", "bi",
-    "power bi", "looker", "tableau", "data science",
-    "python", "sql", "linux", "sysadmin", "system admin",
-    "it support", "technical support", "network",
+    "network security", "security analyst", "security engineer", "security operations",
+    "soc analyst", "incident response", "vulnerability", "penetration",
+    "pen test", "risk analyst", "compliance analyst", "grc",
+    # Cloud — GCP cert + Lowe's
+    "cloud security", "cloud engineer", "gcp", "google cloud",
+    "cloud analyst", "cloud operations",
+    # Data — Lowe's internship tools
+    "data analyst", "data analytics", "business intelligence",
+    "power bi", "looker", "reporting analyst", "operations analyst",
+    # IT / Systems — Google IT Support cert
+    "it support", "systems administrator", "system administrator",
+    "network administrator", "help desk", "technical analyst",
+    # Python / SQL — direct skills
+    "python developer", "python engineer",
 ]
 
-# Prefer US roles + remote
-MY_PREFERRED_LOCATIONS = ["united states", "us", "usa", "remote", "north carolina", "nc"]
+# US-only location indicators — jobs with no location listed still pass
+# (many companies just say "US" or leave it blank for remote)
+_US_INDICATORS = [
+    "united states", " us ", "usa", "u.s.", "u.s.a",
+    "remote", "nationwide",
+    # Common US state names/abbreviations likely to appear
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+    "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+    "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana",
+    "maine", "maryland", "massachusetts", "michigan", "minnesota",
+    "mississippi", "missouri", "montana", "nebraska", "nevada",
+    "new hampshire", "new jersey", "new mexico", "new york", "north carolina",
+    "north dakota", "ohio", "oklahoma", "oregon", "pennsylvania",
+    "rhode island", "south carolina", "south dakota", "tennessee", "texas",
+    "utah", "vermont", "virginia", "washington", "west virginia",
+    "wisconsin", "wyoming",
+    # Common abbreviations
+    " al ", " ak ", " az ", " ar ", " ca ", " co ", " ct ", " de ",
+    " fl ", " ga ", " hi ", " id ", " il ", " in ", " ia ", " ks ",
+    " ky ", " la ", " me ", " md ", " ma ", " mi ", " mn ", " ms ",
+    " mo ", " mt ", " ne ", " nv ", " nh ", " nj ", " nm ", " ny ",
+    " nc ", " nd ", " oh ", " ok ", " or ", " pa ", " ri ", " sc ",
+    " sd ", " tn ", " tx ", " ut ", " vt ", " va ", " wa ", " wv ",
+    " wi ", " wy ",
+]
 
 # ─────────────────────────────────────────────────────────────────────────────
 
 intents = discord.Intents.default()
 client  = discord.Client(intents=intents)
 
-_seen_job_ids: set[str] = set()   # in-memory dedup across scans this session
+_seen_job_ids: set[str] = set()
+
+
+def _is_us_location(location: str) -> bool:
+    """Return True if location is in the US, blank (unknown), or remote."""
+    if not location or location.strip() == "":
+        return True   # no location = probably remote / undisclosed, let it through
+    loc = f" {location.lower()} "
+    return any(ind in loc for ind in _US_INDICATORS)
 
 
 def _matches_me(job: dict) -> bool:
-    """Return True if this job is relevant to Ethan's background."""
-    title = job.get("title", "").lower()
-    desc  = job.get("description", "").lower()
-    cat   = job.get("category", "") or ""
-    text  = f"{title} {desc}"
+    """Return True if this job matches Ethan's background AND is in the US."""
+    title    = job.get("title", "").lower()
+    cat      = job.get("category", "") or ""
+    location = job.get("location", "") or ""
 
-    # Category match
+    # Hard filter — US only
+    if not _is_us_location(location):
+        return False
+
+    # Category match (tightly scoped categories above)
     if cat in MY_CATEGORIES:
         return True
 
-    # Keyword match in title or description
-    if any(kw in text for kw in MY_KEYWORDS):
+    # Title keyword match (title only — avoids noisy description matches)
+    if any(kw in title for kw in MY_TITLE_KEYWORDS):
         return True
 
     return False
