@@ -201,6 +201,11 @@ def fetch_workday(company):
             break
         for p in postings:
             ext_path = p.get("externalPath", "")
+            # Workday's externalPath often includes locale/board prefixes like
+            # /en-US/External/job/... or /BoardName/job/... — strip to /job/...
+            # so the resulting URL actually resolves in a browser.
+            if ext_path and "/job/" in ext_path:
+                ext_path = ext_path[ext_path.index("/job/"):]
             url = f"https://{domain}{ext_path}" if ext_path else ""
             jobs.append({
                 "job_id":      make_id("workday", company_name, p.get("title", ""), url),
