@@ -611,6 +611,16 @@ async def _run_scan(label: str = "") -> int:
     except Exception as e:
         log.warning("Summary update failed: %s", e)
 
+    # Ping notification for new matches (auto-deletes after 60s)
+    if count:
+        try:
+            dm  = await _get_dm()
+            msg = await dm.send(f"📬 **+{count} new internship{'s' if count != 1 else ''}** found — check your summary above!")
+            await asyncio.sleep(60)
+            await msg.delete()
+        except Exception as e:
+            log.warning("Ping notification error: %s", e)
+
     # Check for upcoming deadlines
     await _check_deadlines()
 
