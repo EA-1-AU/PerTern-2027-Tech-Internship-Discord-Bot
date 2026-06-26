@@ -156,7 +156,7 @@ def _db_unreviewed_by_category() -> dict[str, int]:
             SELECT j.category, COUNT(*) FROM jobs j
             LEFT JOIN user_jobs uj
                 ON j.job_id = uj.job_id AND uj.user_id = ?
-            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
             AND j.category IS NOT NULL AND j.category != ''
             GROUP BY j.category
             ORDER BY COUNT(*) DESC
@@ -174,7 +174,7 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
                 SELECT j.* FROM jobs j
                 LEFT JOIN user_jobs uj
                     ON j.job_id = uj.job_id AND uj.user_id = ?
-                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
                 AND j.category = ?
                 ORDER BY j.first_seen DESC
             """, (uid, category)).fetchall()
@@ -183,7 +183,7 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
                 SELECT j.* FROM jobs j
                 LEFT JOIN user_jobs uj
                     ON j.job_id = uj.job_id AND uj.user_id = ?
-                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
                 ORDER BY j.first_seen DESC
             """, (uid,)).fetchall()
     return [dict(r) for r in rows]
@@ -196,7 +196,7 @@ def _db_total_unreviewed() -> int:
             SELECT COUNT(*) FROM jobs j
             LEFT JOIN user_jobs uj
                 ON j.job_id = uj.job_id AND uj.user_id = ?
-            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
         """, (uid,)).fetchone()
     return row[0] if row else 0
 
@@ -314,15 +314,103 @@ def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Emb
     return em
 
 
+# ── Modals ───────────────────────────────────────────────────────────────────
+
+class ApplyNoteModal(discord.ui.Modal, title="Application Note (optional)"):
+    note = discord.ui.TextInput(
+        label="Note",
+        placeholder="Recruiter name, referral, cover letter needed, etc.",
+        required=False,
+        max_length=500,
+        style=discord.TextStyle.paragraph,
+    )
+
+    def __init__(self, job: dict):
+        super().__init__()
+        self.job = job
+
+    async def on_submit(self, interaction: discord.Interaction):
+        jid = self.job.get("job_id", "")
+        uid = str(MY_USER_ID)
+        db.ensure_user_job(uid, jid)
+        db.set_user_status(uid, jid, "applied")
+        if self.note.value.strip():
+            db.add_user_note(uid, jid, self.note.value.strip())
+        await _advance_after_mark(interaction, "applied")
+
+
+class SnoozeModal(discord.ui.Modal, title="Snooze this job"):
+    days = discord.ui.TextInput(
+        label="Snooze for how many days?",
+        placeholder="3",
+        required=True,
+        max_length=3,
+    )
+
+    def __init__(self, job: dict):
+        super().__init__()
+        self.job = job
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            n = max(1, min(30, int(self.days.value.strip())))
+        except ValueError:
+            n = 3
+        jid      = self.job.get("job_id", "")
+        uid      = str(MY_USER_ID)
+        wake_at  = (datetime.datetime.now(timezone.utc) + datetime.timedelta(days=n)).isoformat()
+        db.add_reminder(uid, jid, wake_at, message="snooze")
+        db.ensure_user_job(uid, jid)
+        db.set_user_status(uid, jid, "snoozed")
+        await _advance_after_mark(interaction, "snoozed")
+
+
+# ── Browse helpers ────────────────────────────────────────────────────────────
+
+_REVIEWED = {"applied", "skipped", "snoozed", "interview", "offer"}
+
+
+async def _advance_after_mark(interaction: discord.Interaction, marked_status: str):
+    """After marking a job, advance to the next unreviewed one."""
+    uid  = str(MY_USER_ID)
+    jobs = _browse["jobs"]
+    idx  = _browse["index"]
+
+    next_idx = idx + 1
+    while next_idx < len(jobs):
+        j  = jobs[next_idx]
+        uj = db.get_user_job(uid, j.get("job_id", ""))
+        if (uj or {}).get("status", "") not in _REVIEWED:
+            break
+        next_idx += 1
+
+    if next_idx >= len(jobs):
+        em = discord.Embed(
+            title="✅ All done!",
+            description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.",
+            color=discord.Color.green(),
+        )
+        await interaction.response.edit_message(embed=em, view=None)
+    else:
+        _browse["index"] = next_idx
+        job    = jobs[next_idx]
+        new_uj = db.get_user_job(uid, job.get("job_id", ""))
+        new_st = (new_uj or {}).get("status", "")
+        em     = _make_job_embed(job, index=next_idx, total=len(jobs), status=new_st)
+        await interaction.response.edit_message(embed=em, view=BrowseView(job))
+
+
 # ── Browse UI ─────────────────────────────────────────────────────────────────
 
 class BrowseView(discord.ui.View):
-    """One-at-a-time job card with ◀ Applied Skip ▶ buttons."""
+    """
+    Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next
+    Row 1: 🗣️ Interview | 🎉 Offer | 💤 Snooze | 🔗 Link
+    """
 
-    def __init__(self, job: dict, reason: str = ""):
+    def __init__(self, job: dict):
         super().__init__(timeout=None)
-        self.job    = job
-        self.reason = reason
+        self.job = job
 
     async def _go(self, interaction: discord.Interaction, new_index: int):
         jobs = _browse["jobs"]
@@ -330,44 +418,19 @@ class BrowseView(discord.ui.View):
         _browse["index"] = new_index
         job    = jobs[new_index]
         uid    = str(MY_USER_ID)
-        uj     = db.get_user_job(uid, job.get("job_id",""))
-        status = (uj or {}).get("status","")
+        uj     = db.get_user_job(uid, job.get("job_id", ""))
+        status = (uj or {}).get("status", "")
         em     = _make_job_embed(job, index=new_index, total=len(jobs), status=status)
         await interaction.response.edit_message(embed=em, view=BrowseView(job))
 
-    async def _mark(self, interaction: discord.Interaction, status: str):
+    async def _mark_direct(self, interaction: discord.Interaction, status: str):
         jid = self.job.get("job_id", "")
         uid = str(MY_USER_ID)
         db.ensure_user_job(uid, jid)
         db.set_user_status(uid, jid, status)
+        await _advance_after_mark(interaction, status)
 
-        jobs = _browse["jobs"]
-        idx  = _browse["index"]
-
-        # Advance to next unreviewed, or show done message
-        next_idx = idx + 1
-        while next_idx < len(jobs):
-            j   = jobs[next_idx]
-            uj  = db.get_user_job(uid, j.get("job_id",""))
-            st  = (uj or {}).get("status","")
-            if st not in ("applied","skipped"):
-                break
-            next_idx += 1
-
-        if next_idx >= len(jobs):
-            em = discord.Embed(
-                title="✅ All done!",
-                description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.",
-                color=discord.Color.green(),
-            )
-            await interaction.response.edit_message(embed=em, view=None)
-        else:
-            _browse["index"] = next_idx
-            job    = jobs[next_idx]
-            new_uj = db.get_user_job(uid, job.get("job_id",""))
-            new_st = (new_uj or {}).get("status","")
-            em     = _make_job_embed(job, index=next_idx, total=len(jobs), status=new_st)
-            await interaction.response.edit_message(embed=em, view=BrowseView(job))
+    # ── Row 0 ─────────────────────────────────────────────────────────────────
 
     @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary, row=0)
     async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -375,15 +438,37 @@ class BrowseView(discord.ui.View):
 
     @discord.ui.button(label="✅ Applied", style=discord.ButtonStyle.success, row=0)
     async def applied_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._mark(interaction, "applied")
+        await interaction.response.send_modal(ApplyNoteModal(self.job))
 
     @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.danger, row=0)
     async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._mark(interaction, "skipped")
+        await self._mark_direct(interaction, "skipped")
 
     @discord.ui.button(label="▶ Next", style=discord.ButtonStyle.secondary, row=0)
     async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._go(interaction, _browse["index"] + 1)
+
+    # ── Row 1 ─────────────────────────────────────────────────────────────────
+
+    @discord.ui.button(label="🗣️ Interview", style=discord.ButtonStyle.primary, row=1)
+    async def interview_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark_direct(interaction, "interview")
+
+    @discord.ui.button(label="🎉 Offer", style=discord.ButtonStyle.primary, row=1)
+    async def offer_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark_direct(interaction, "offer")
+
+    @discord.ui.button(label="💤 Snooze", style=discord.ButtonStyle.secondary, row=1)
+    async def snooze_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(SnoozeModal(self.job))
+
+    @discord.ui.button(label="🔗 Link", style=discord.ButtonStyle.secondary, row=1)
+    async def link_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        url = self.job.get("url", "")
+        if url:
+            await interaction.response.send_message(url, ephemeral=False)
+        else:
+            await interaction.response.send_message("No URL available for this listing.", ephemeral=True)
 
 
 # ── Category select dropdown ──────────────────────────────────────────────────
@@ -622,9 +707,30 @@ async def weekly_stats_loop():
         await _send_weekly_stats()
 
 
+@tasks.loop(minutes=15)
+async def snooze_check_loop():
+    """Wake up snoozed jobs whose reminder time has passed."""
+    try:
+        reminders = db.get_due_reminders()
+        for r in reminders:
+            if r.get("message") != "snooze":
+                continue
+            uid = str(MY_USER_ID)
+            jid = r.get("job_id", "")
+            uj  = db.get_user_job(uid, jid)
+            if uj and uj.get("status") == "snoozed":
+                db.set_user_status(uid, jid, "new")
+            db.mark_reminder_sent(r["id"])
+        if reminders:
+            await _update_summary()
+    except Exception:
+        log.exception("Snooze check error")
+
+
 @scan_loop.before_loop
 @daily_digest_loop.before_loop
 @weekly_stats_loop.before_loop
+@snooze_check_loop.before_loop
 async def before_loops():
     await client.wait_until_ready()
 
@@ -684,6 +790,59 @@ async def slash_status(interaction: discord.Interaction):
     await interaction.response.send_message(embed=em, ephemeral=True)
 
 
+@tree.command(name="find", description="Search indexed jobs by keyword or company name")
+@discord.app_commands.describe(query="Title or company to search for")
+async def slash_find(interaction: discord.Interaction, query: str):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    results = db.search_jobs(query, limit=10)
+    if not results:
+        await interaction.followup.send(f"No jobs found matching **{query}**.", ephemeral=True)
+        return
+    uid = str(MY_USER_ID)
+    lines = []
+    for j in results:
+        uj     = db.get_user_job(uid, j.get("job_id",""))
+        status = (uj or {}).get("status","")
+        badge  = {"applied":"✅","skipped":"⏭️","interview":"🗣️","offer":"🎉","snoozed":"💤"}.get(status,"🔵")
+        url    = j.get("url","")
+        link   = f"[{j.get('title','')}]({url})" if url else j.get("title","")
+        lines.append(f"{badge} **{j.get('company','')}** — {link}")
+    em = discord.Embed(
+        title=f"🔍 Results for \"{query}\"",
+        description="\n".join(lines),
+        color=discord.Color.from_rgb(88, 101, 242),
+    )
+    em.set_footer(text=f"{len(results)} result(s)")
+    await interaction.followup.send(embed=em, ephemeral=True)
+
+
+@tree.command(name="export", description="DM you a CSV of all applied/interview/offer jobs")
+async def slash_export(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    uid  = str(MY_USER_ID)
+    rows = db.get_user_jobs_for_export(uid)
+    if not rows:
+        await interaction.followup.send("Nothing exported yet — mark some jobs as Applied first.", ephemeral=True)
+        return
+    import csv, io
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["company","title","location","status","url","term","category","first_seen","notes"])
+    writer.writeheader()
+    writer.writerows(rows)
+    buf.seek(0)
+    fname = f"pertern_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv"
+    dm = await _get_dm()
+    await dm.send(
+        content=f"📎 Your PerTern export — **{len(rows)} jobs**",
+        file=discord.File(fp=io.BytesIO(buf.getvalue().encode()), filename=fname),
+    )
+    await interaction.followup.send("Export sent to your DMs!", ephemeral=True)
+
+
 @tree.command(name="clear-dm", description="Delete all bot messages from your DMs (clean slate)")
 async def slash_clear_dm(interaction: discord.Interaction):
     if not _owner_only(interaction):
@@ -735,7 +894,8 @@ async def on_ready():
                 f"Daily digest at **{DIGEST_HOUR}:00 UTC** (~8am ET).\n"
                 f"Weekly stats every **Sunday**.\n\n"
                 f"**{db.get_job_count():,}** internships already indexed.\n\n"
-                f"Commands: `/check` · `/summary` · `/stats` · `/status`"
+                f"Commands: `/check` `/summary` `/stats` `/status`\n"
+                f"`/find <keyword>` `/export` `/clear-dm`"
             ),
             color=discord.Color.green(),
             timestamp=datetime.datetime.now(timezone.utc),
@@ -748,6 +908,7 @@ async def on_ready():
     scan_loop.start()
     daily_digest_loop.start()
     weekly_stats_loop.start()
+    snooze_check_loop.start()
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
