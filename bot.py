@@ -115,8 +115,7 @@ FORTUNE_500_WATCHLIST = {
 
 # Personal company watchlist — always included no matter what
 MY_COMPANY_WATCHLIST = {
-    "lowe's", "lowes",        # already interned here
-    "crowdstrike",             # top cybersecurity employer
+    "crowdstrike",
     "palo alto networks",
     "google", "alphabet",
     "microsoft",
