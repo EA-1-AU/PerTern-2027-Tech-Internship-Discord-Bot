@@ -235,7 +235,11 @@ def _matches_me(job: dict) -> tuple[bool, str]:
     return False, ""
 
 
+_SKILLBRIDGE_RE = re.compile(r'skill\s*bridge', re.IGNORECASE)
+
 def _is_internship(title: str) -> bool:
+    if _SKILLBRIDGE_RE.search(title):
+        return False
     return bool(re.search(r'\bintern(ship)?\b', title, re.IGNORECASE))
 
 
