@@ -15,6 +15,7 @@ import datetime
 import logging
 import os
 import re
+import sqlite3
 from datetime import timezone
 
 import discord
@@ -37,95 +38,65 @@ log = logging.getLogger("pertern")
 TOKEN          = os.getenv("DISCORD_TOKEN", "")
 MY_USER_ID     = int(os.getenv("MY_DISCORD_USER_ID", "0"))
 SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
-DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))       # 13 UTC = ~8am ET
+DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
 REQUIRE_SALARY = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
 
 # ── Personal filter ───────────────────────────────────────────────────────────
-# Ethan Austin — Cybersecurity BS + Business Minor @ Anderson University (SC)
-# Certs: Google Cybersecurity, Google IT Support, Python for Everybody,
-#        Google AI Essentials, Google Cloud Fundamentals, Microsoft Excel
-# Tools: Python, SQL, Linux, GCP, Power BI, Looker Studio, Excel, Tableau
-# Exp  : Lowe's data/reporting intern (Power BI, GCP, Looker), Code Ninjas
-#        (Python, Lua, C#, JS), AU Makerspace (tech support, 3D printing)
-
 MY_CATEGORIES = {
-    "🔒 Cybersecurity",       # Primary degree
-    "☁️ DevOps & Cloud",      # GCP cert + Lowe's GCP experience
-    "📈 Data Analytics",      # Lowe's: Power BI, Looker, Excel reporting
-    "📊 Data Science",        # Python cert + data analysis skills
+    "🔒 Cybersecurity",
+    "☁️ DevOps & Cloud",
+    "📈 Data Analytics",
+    "📊 Data Science",
 }
 
-# Matched against job TITLE only (descriptions are too noisy)
 MY_TITLE_KEYWORDS = [
-    # Cybersecurity — core degree
     "cybersecurity", "cyber security", "information security", "infosec",
     "network security", "security analyst", "security engineer",
     "security operations", "soc analyst", "incident response",
     "vulnerability", "penetration", "pen test", "risk analyst",
     "compliance analyst", "grc", "identity", "iam",
-    # Cloud — GCP cert + Lowe's
     "cloud security", "cloud engineer", "cloud analyst", "cloud operations",
     "gcp", "google cloud", "cloud infrastructure",
-    # Data — Lowe's tools
     "data analyst", "data analytics", "business intelligence",
     "power bi", "looker", "reporting analyst", "operations analyst",
     "bi analyst", "bi developer",
-    # IT / Systems — Google IT Support cert
     "it support", "systems administrator", "system administrator",
     "network administrator", "help desk", "technical analyst",
     "it analyst", "systems analyst",
-    # Python / SQL
     "python developer", "python engineer", "sql analyst",
 ]
 
-# These companies ALWAYS pass through regardless of title or category
-# (Fortune 500 + companies highly relevant to your background)
 FORTUNE_500_WATCHLIST = {
-    # Big Tech
     "apple", "microsoft", "google", "alphabet", "amazon", "meta", "nvidia",
     "intel", "ibm", "oracle", "salesforce", "adobe", "cisco", "qualcomm",
     "texas instruments", "broadcom", "hp", "dell", "hewlett packard",
     "accenture", "cognizant",
-    # Cybersecurity companies
     "crowdstrike", "palo alto networks", "fortinet", "sentinelone",
     "cyberark", "tenable", "rapid7", "splunk", "darktrace", "zscaler",
     "cloudflare", "okta", "sailpoint",
-    # Finance / Banking (big employers for data/security roles)
     "jpmorgan", "jp morgan", "bank of america", "wells fargo", "citigroup",
     "citibank", "goldman sachs", "morgan stanley", "american express",
     "visa", "mastercard", "capital one", "charles schwab", "fidelity",
     "blackrock", "deloitte", "pwc", "kpmg", "ernst & young", "ey",
-    # Defense / Gov contractors (cybersecurity heavy)
     "lockheed martin", "boeing", "raytheon", "northrop grumman",
     "general dynamics", "l3harris", "leidos", "booz allen", "saic",
     "mantech", "peraton",
-    # Telecom
     "at&t", "verizon", "t-mobile", "comcast",
-    # Retail / Consumer (Lowe's competitor set + big employers)
     "walmart", "target", "home depot", "lowe's", "lowes", "costco",
-    "amazon", "fedex", "ups",
-    # Healthcare / Pharma (growing cybersecurity/data need)
+    "fedex", "ups",
     "unitedhealth", "cvs health", "anthem", "humana", "cigna",
     "johnson & johnson", "pfizer", "abbvie",
-    # Other Fortune 500
     "procter & gamble", "general electric", "honeywell", "3m",
     "exxon", "chevron", "general motors", "ford",
     "pepsico", "coca-cola",
 }
 
-# Personal company watchlist — always included no matter what
 MY_COMPANY_WATCHLIST = {
-    "crowdstrike",
-    "palo alto networks",
-    "google", "alphabet",
-    "microsoft",
-    "amazon",
-    "deloitte",
-    "booz allen",
-    "leidos",
+    "crowdstrike", "palo alto networks",
+    "google", "alphabet", "microsoft", "amazon",
+    "deloitte", "booz allen", "leidos",
 }
 
-# US location indicators — jobs with blank location still pass (remote/undisclosed)
 _US_INDICATORS = [
     "united states", "u.s.", "u.s.a", "usa", " us ",
     "remote", "nationwide", "hybrid",
@@ -156,51 +127,100 @@ client = discord.Client(intents=intents)
 tree   = discord.app_commands.CommandTree(client)
 
 _seen_job_ids: set[str] = set()
-_scan_batches: dict[int, list[dict]] = {}
-_scan_counter = 0
+
+# Persistent summary message ID (saved to DB so it survives restarts)
+_SUMMARY_MSG_KEY = "pertern_summary_msg_id"
+
+# Current browse session (one at a time — personal bot)
+_browse: dict = {
+    "jobs":     [],    # list of job dicts in current session
+    "index":    0,     # which job is showing
+    "category": None,  # category filter active
+}
+
+
+# ── DB helpers (direct SQL for unreviewed job queries) ────────────────────────
+
+def _db_unreviewed_by_category() -> dict[str, int]:
+    """Return {category: unreviewed_count} for the summary."""
+    uid = str(MY_USER_ID)
+    with sqlite3.connect(str(db.DB_PATH)) as conn:
+        rows = conn.execute("""
+            SELECT j.category, COUNT(*) FROM jobs j
+            LEFT JOIN user_jobs uj
+                ON j.job_id = uj.job_id AND uj.user_id = ?
+            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+            AND j.category IS NOT NULL AND j.category != ''
+            GROUP BY j.category
+            ORDER BY COUNT(*) DESC
+        """, (uid,)).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
+def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
+    """Return all unreviewed jobs, optionally filtered to one category."""
+    uid = str(MY_USER_ID)
+    with sqlite3.connect(str(db.DB_PATH)) as conn:
+        conn.row_factory = sqlite3.Row
+        if category:
+            rows = conn.execute("""
+                SELECT j.* FROM jobs j
+                LEFT JOIN user_jobs uj
+                    ON j.job_id = uj.job_id AND uj.user_id = ?
+                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+                AND j.category = ?
+                ORDER BY j.created_at DESC
+            """, (uid, category)).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT j.* FROM jobs j
+                LEFT JOIN user_jobs uj
+                    ON j.job_id = uj.job_id AND uj.user_id = ?
+                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+                ORDER BY j.created_at DESC
+            """, (uid,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _db_total_unreviewed() -> int:
+    uid = str(MY_USER_ID)
+    with sqlite3.connect(str(db.DB_PATH)) as conn:
+        row = conn.execute("""
+            SELECT COUNT(*) FROM jobs j
+            LEFT JOIN user_jobs uj
+                ON j.job_id = uj.job_id AND uj.user_id = ?
+            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
+        """, (uid,)).fetchone()
+    return row[0] if row else 0
 
 
 # ── Filter logic ──────────────────────────────────────────────────────────────
 
 def _is_us_location(location: str) -> bool:
     if not location or location.strip() == "":
-        return True  # blank = remote / undisclosed, allow
+        return True
     loc = f" {location.lower()} "
     return any(ind in loc for ind in _US_INDICATORS)
 
 
 def _matches_me(job: dict) -> tuple[bool, str]:
-    """
-    Returns (match: bool, reason: str).
-    reason is shown on the job card so you know why it was sent.
-    """
     title    = job.get("title", "").lower()
     cat      = job.get("category", "") or ""
     company  = job.get("company", "").lower()
     location = job.get("location", "") or ""
     salary   = job.get("salary", "") or ""
 
-    # Hard filter: US only
     if not _is_us_location(location):
         return False, ""
-
-    # Salary filter (optional — set REQUIRE_SALARY=true in .env)
     if REQUIRE_SALARY and not salary:
         return False, ""
 
-    # Personal watchlist — always include
     if any(w in company for w in MY_COMPANY_WATCHLIST):
         return True, f"Watchlist: {job.get('company','')}"
-
-    # Fortune 500 — always include
     if any(f in company for f in FORTUNE_500_WATCHLIST):
         return True, f"Fortune 500: {job.get('company','')}"
-
-    # Category match
     if cat in MY_CATEGORIES:
         return True, f"Category: {cat}"
-
-    # Title keyword match
     for kw in MY_TITLE_KEYWORDS:
         if kw in title:
             return True, f"Keyword: {kw}"
@@ -212,22 +232,9 @@ def _is_internship(title: str) -> bool:
     return bool(re.search(r'\bintern(ship)?\b', title, re.IGNORECASE))
 
 
-def _2027_filter(job: dict) -> bool:
-    raw = f"{job.get('title','')} {job.get('description','')}".lower()
-    if "2026" in raw:
-        return False
-    term = job.get("term") or ""
-    yr   = re.search(r'(20\d{2})', term)
-    if yr:
-        return yr.group(1) == "2027"
-    if job.get("source", "").lower() == "simplify":
-        return False
-    return True
-
-
 # ── Embeds ────────────────────────────────────────────────────────────────────
 
-def _make_embed(job: dict, reason: str = "", applied: bool = False) -> discord.Embed:
+def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0, status: str = "") -> discord.Embed:
     title    = job.get("title", "No Title")
     company  = job.get("company", "Unknown")
     location = job.get("location", "")
@@ -237,118 +244,206 @@ def _make_embed(job: dict, reason: str = "", applied: bool = False) -> discord.E
     cat      = job.get("category", "")
     deadline = job.get("deadline", "")
 
-    color = discord.Color.green() if applied else discord.Color.from_rgb(88, 101, 242)
+    status_prefix = {"applied": "✅ ", "skipped": "⏭️ "}.get(status, "")
+    color = {"applied": discord.Color.green(), "skipped": discord.Color.dark_gray()}.get(
+        status, discord.Color.from_rgb(88, 101, 242)
+    )
+
     em = discord.Embed(
-        title=f"{'✅ ' if applied else ''}{title}",
+        title=f"{status_prefix}{title}",
         url=url or None,
         color=color,
         timestamp=datetime.datetime.now(timezone.utc),
     )
     em.set_author(name=company)
 
-    if location:
-        em.add_field(name="📍 Location", value=location,  inline=True)
-    if term:
-        em.add_field(name="📅 Term",     value=term,      inline=True)
-    if salary:
-        em.add_field(name="💰 Salary",   value=salary,    inline=True)
-    if cat:
-        em.add_field(name="🏷️ Category", value=cat,       inline=True)
-    if deadline:
-        em.add_field(name="⏰ Deadline", value=deadline,  inline=True)
-    if reason:
-        em.add_field(name="🎯 Why sent", value=reason,    inline=False)
-    if url:
-        em.add_field(name="🔗 Apply",    value=f"[Open listing]({url})", inline=False)
-    if applied:
-        em.add_field(name="📝 Status", value="✅ Marked as Applied", inline=False)
+    if location: em.add_field(name="📍 Location", value=location,  inline=True)
+    if term:     em.add_field(name="📅 Term",     value=term,       inline=True)
+    if salary:   em.add_field(name="💰 Salary",   value=salary,     inline=True)
+    if cat:      em.add_field(name="🏷️ Category", value=cat,        inline=True)
+    if deadline: em.add_field(name="⏰ Deadline", value=deadline,   inline=True)
+    if reason:   em.add_field(name="🎯 Why sent", value=reason,     inline=False)
+    if url:      em.add_field(name="🔗 Apply",    value=f"[Open listing]({url})", inline=False)
+    if status:   em.add_field(name="📝 Status",   value=f"{status_prefix}{status.title()}", inline=False)
 
-    em.set_footer(text=f"PerTern · ID: {job.get('job_id','')}")
+    counter = f"{index + 1}/{total} · " if total else ""
+    em.set_footer(text=f"PerTern · {counter}ID: {job.get('job_id','')}")
     return em
 
 
-# ── Apply tracker button ──────────────────────────────────────────────────────
+def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Embed:
+    total = sum(cats.values())
+    lines = [f"{cat} — **{n}** unreviewed" for cat, n in cats.items()]
+    if not lines:
+        desc = "Nothing unreviewed right now. Check back after the next scan!"
+    else:
+        desc = "\n".join(lines)
+        if new_count:
+            desc = f"**+{new_count} new this scan**\n\n" + desc
+        desc += f"\n\n**{total} total unreviewed** — use the dropdown below to browse."
 
-class JobCardView(discord.ui.View):
-    def __init__(self, job: dict, reason: str):
+    em = discord.Embed(
+        title="📋 PerTern — Internship Summary",
+        description=desc,
+        color=discord.Color.from_rgb(88, 101, 242),
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+    em.set_footer(text=f"PerTern · {db.get_job_count():,} total indexed · Scans every {SCAN_INTERVAL}min")
+    return em
+
+
+# ── Browse UI ─────────────────────────────────────────────────────────────────
+
+class BrowseView(discord.ui.View):
+    """One-at-a-time job card with ◀ Applied Skip ▶ buttons."""
+
+    def __init__(self, job: dict, reason: str = ""):
         super().__init__(timeout=None)
         self.job    = job
         self.reason = reason
 
-    @discord.ui.button(label="✅ Mark Applied", style=discord.ButtonStyle.success)
-    async def mark_applied(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def _go(self, interaction: discord.Interaction, new_index: int):
+        jobs = _browse["jobs"]
+        new_index = max(0, min(len(jobs) - 1, new_index))
+        _browse["index"] = new_index
+        job    = jobs[new_index]
+        uid    = str(MY_USER_ID)
+        uj     = db.get_user_job(uid, job.get("job_id",""))
+        status = (uj or {}).get("status","")
+        em     = _make_job_embed(job, index=new_index, total=len(jobs), status=status)
+        await interaction.response.edit_message(embed=em, view=BrowseView(job))
+
+    async def _mark(self, interaction: discord.Interaction, status: str):
         jid = self.job.get("job_id", "")
         uid = str(MY_USER_ID)
         db.ensure_user_job(uid, jid)
-        db.set_user_status(uid, jid, "applied")
-        button.label    = "✅ Applied"
-        button.disabled = True
-        await interaction.response.edit_message(
-            embed=_make_embed(self.job, self.reason, applied=True),
-            view=self,
+        db.set_user_status(uid, jid, status)
+
+        jobs = _browse["jobs"]
+        idx  = _browse["index"]
+
+        # Advance to next unreviewed, or show done message
+        next_idx = idx + 1
+        while next_idx < len(jobs):
+            j   = jobs[next_idx]
+            uj  = db.get_user_job(uid, j.get("job_id",""))
+            st  = (uj or {}).get("status","")
+            if st not in ("applied","skipped"):
+                break
+            next_idx += 1
+
+        if next_idx >= len(jobs):
+            em = discord.Embed(
+                title="✅ All done!",
+                description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.",
+                color=discord.Color.green(),
+            )
+            await interaction.response.edit_message(embed=em, view=None)
+        else:
+            _browse["index"] = next_idx
+            job    = jobs[next_idx]
+            new_uj = db.get_user_job(uid, job.get("job_id",""))
+            new_st = (new_uj or {}).get("status","")
+            em     = _make_job_embed(job, index=next_idx, total=len(jobs), status=new_st)
+            await interaction.response.edit_message(embed=em, view=BrowseView(job))
+
+    @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary, row=0)
+    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._go(interaction, _browse["index"] - 1)
+
+    @discord.ui.button(label="✅ Applied", style=discord.ButtonStyle.success, row=0)
+    async def applied_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark(interaction, "applied")
+
+    @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.danger, row=0)
+    async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark(interaction, "skipped")
+
+    @discord.ui.button(label="▶ Next", style=discord.ButtonStyle.secondary, row=0)
+    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._go(interaction, _browse["index"] + 1)
+
+
+# ── Category select dropdown ──────────────────────────────────────────────────
+
+class CategorySelect(discord.ui.Select):
+    def __init__(self, cats: dict[str, int]):
+        total = sum(cats.values())
+        options = [
+            discord.SelectOption(
+                label="All Categories",
+                value="__all__",
+                description=f"{total} unreviewed internships",
+                emoji="📋",
+            )
+        ]
+        for cat, count in list(cats.items())[:24]:
+            options.append(discord.SelectOption(
+                label=cat[:100],
+                value=cat,
+                description=f"{count} unreviewed",
+            ))
+        super().__init__(
+            placeholder="Choose a category to browse...",
+            options=options,
+            min_values=1,
+            max_values=1,
         )
-        log.info("Marked applied: %s @ %s", self.job.get("title"), self.job.get("company"))
+
+    async def callback(self, interaction: discord.Interaction):
+        category = None if self.values[0] == "__all__" else self.values[0]
+        jobs = _db_unreviewed_jobs(category)
+        if not jobs:
+            await interaction.response.send_message(
+                "No unreviewed jobs in that category right now!", ephemeral=False
+            )
+            return
+        _browse["jobs"]     = jobs
+        _browse["index"]    = 0
+        _browse["category"] = category
+
+        uid    = str(MY_USER_ID)
+        job    = jobs[0]
+        uj     = db.get_user_job(uid, job.get("job_id",""))
+        status = (uj or {}).get("status","")
+        cat_label = category or "All Categories"
+        em = _make_job_embed(job, index=0, total=len(jobs), status=status)
+        em.description = f"Browsing: **{cat_label}** — {len(jobs)} jobs\nUse ◀ ▶ to navigate · Applied/Skip to mark"
+
+        await interaction.response.send_message(embed=em, view=BrowseView(job))
 
 
-# ── Scan result view (summary + pagination) ───────────────────────────────────
-
-class ScanResultView(discord.ui.View):
-    def __init__(self, scan_id: int):
+class SummaryView(discord.ui.View):
+    def __init__(self, cats: dict[str, int]):
         super().__init__(timeout=None)
-        self.scan_id   = scan_id
-        self.page      = 0
-        self.PAGE_SIZE = 5
+        if cats:
+            self.add_item(CategorySelect(cats))
 
-    def _jobs(self) -> list[dict]:
-        return _scan_batches.get(self.scan_id, [])
 
-    @discord.ui.button(label="📋 Show Jobs", style=discord.ButtonStyle.primary)
-    async def show_jobs(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page = 0
-        await interaction.response.defer()
-        await self._send_page(interaction)
+# ── Summary message (persistent, edited each scan) ───────────────────────────
 
-    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
-    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        self.page = max(0, self.page - 1)
-        await interaction.response.defer()
-        await self._send_page(interaction)
+async def _update_summary(new_count: int = 0):
+    """Create or edit the one persistent summary DM message."""
+    cats = _db_unreviewed_by_category()
+    em   = _make_summary_embed(cats, new_count)
+    view = SummaryView(cats)
 
-    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
-    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
-        max_page = max(0, (len(self._jobs()) - 1) // self.PAGE_SIZE)
-        self.page = min(max_page, self.page + 1)
-        await interaction.response.defer()
-        await self._send_page(interaction)
+    stored_id = db.get_bot_state(_SUMMARY_MSG_KEY)
+    dm = await _get_dm()
 
-    async def _send_page(self, interaction: discord.Interaction):
-        jobs  = self._jobs()
-        start = self.page * self.PAGE_SIZE
-        batch = jobs[start : start + self.PAGE_SIZE]
-        total_pages = max(1, -(-len(jobs) // self.PAGE_SIZE))
+    if stored_id:
+        try:
+            msg = await dm.fetch_message(int(stored_id))
+            await msg.edit(embed=em, view=view)
+            return
+        except discord.NotFound:
+            pass
+        except Exception as e:
+            log.warning("Summary edit failed: %s", e)
 
-        for entry in batch:
-            job    = entry["job"]
-            reason = entry["reason"]
-            jid    = job.get("job_id", "")
-            uid    = str(MY_USER_ID)
-            applied = False
-            try:
-                uj = db.get_user_job(uid, jid)
-                applied = (uj or {}).get("status") == "applied"
-            except Exception:
-                pass
-            try:
-                await interaction.followup.send(
-                    embed=_make_embed(job, reason, applied),
-                    view=JobCardView(job, reason),
-                )
-            except Exception as e:
-                log.warning("Job send error: %s", e)
-
-        await interaction.followup.send(
-            f"Page {self.page + 1}/{total_pages} · {len(jobs)} total matches this scan"
-        )
+    # Create new summary message
+    msg = await dm.send(embed=em, view=view)
+    db.set_bot_state(_SUMMARY_MSG_KEY, str(msg.id))
 
 
 # ── Core scan ─────────────────────────────────────────────────────────────────
@@ -358,11 +453,10 @@ async def _get_dm() -> discord.DMChannel:
     return await user.create_dm()
 
 
-async def _run_scan(label: str = "") -> list[dict]:
-    global _scan_counter
+async def _run_scan(label: str = "") -> int:
     log.info("Scan starting%s...", f" ({label})" if label else "")
     loop     = asyncio.get_event_loop()
-    new_jobs: list[dict] = []   # list of {"job": ..., "reason": ...}
+    new_jobs: list[dict] = []
 
     def _on_batch(company: str, raw_jobs: list[dict]):
         for job in raw_jobs:
@@ -391,75 +485,42 @@ async def _run_scan(label: str = "") -> list[dict]:
                 deadline=job.get("deadline"),
                 salary=job.get("salary"),
             )
-            new_jobs.append({"job": job, "reason": reason})
+            new_jobs.append(job)
 
     await loop.run_in_executor(None, lambda: run_all_scrapers(on_batch=_on_batch))
 
     count = len(new_jobs)
     log.info("Scan done — %d new matches", count)
 
-    if count == 0:
-        return []
-
-    # Store batch
-    _scan_counter += 1
-    scan_id = _scan_counter
-    _scan_batches[scan_id] = new_jobs
-
-    # Category breakdown for summary
-    cats: dict[str, int] = {}
-    f500_count = 0
-    for entry in new_jobs:
-        r = entry["reason"]
-        c = entry["job"].get("category") or "Other"
-        if r.startswith("Fortune 500") or r.startswith("Watchlist"):
-            f500_count += 1
-        cats[c] = cats.get(c, 0) + 1
-
-    lines = [f"• {c} — **{n}**" for c, n in sorted(cats.items(), key=lambda x: -x[1])]
-    if f500_count:
-        lines.append(f"• ⭐ Fortune 500 / Watchlist — **{f500_count}**")
-
-    em = discord.Embed(
-        title=f"🔍 {count} new internship{'s' if count != 1 else ''} found",
-        description="\n".join(lines) + "\n\nClick **Show Jobs** to browse them.",
-        color=discord.Color.from_rgb(88, 101, 242),
-        timestamp=datetime.datetime.now(timezone.utc),
-    )
-    em.set_footer(text=f"PerTern · Scan #{scan_id} · {db.get_job_count():,} total indexed")
-
+    # Always update the summary (edit new count in, or just refresh totals)
     try:
-        dm = await _get_dm()
-        await dm.send(embed=em, view=ScanResultView(scan_id))
+        await _update_summary(new_count=count)
     except Exception as e:
-        log.warning("Summary DM failed: %s", e)
+        log.warning("Summary update failed: %s", e)
 
-    # Check for upcoming deadlines and send reminders
+    # Check for upcoming deadlines
     await _check_deadlines()
 
-    return new_jobs
+    return count
 
 
 # ── Deadline reminders ────────────────────────────────────────────────────────
 
 async def _check_deadlines():
-    """DM about jobs with deadlines in the next 3 days."""
     try:
         uid  = str(MY_USER_ID)
-        jobs = db.get_all_jobs() if hasattr(db, "get_all_jobs") else []
+        jobs = db.get_user_jobs_with_deadlines(uid, days=3)
         now  = datetime.datetime.now(timezone.utc)
         for job in jobs:
             deadline_str = job.get("deadline", "")
             if not deadline_str:
                 continue
-            # Try common date formats
             for fmt in ("%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y"):
                 try:
-                    dl = datetime.datetime.strptime(deadline_str.strip(), fmt).replace(tzinfo=timezone.utc)
+                    dl        = datetime.datetime.strptime(deadline_str.strip(), fmt).replace(tzinfo=timezone.utc)
                     days_left = (dl - now).days
                     if 0 <= days_left <= 3:
-                        jid = job.get("job_id", "")
-                        state_key = f"reminded_{jid}"
+                        state_key = f"reminded_{job.get('job_id','')}"
                         if not db.get_bot_state(state_key):
                             db.set_bot_state(state_key, "1")
                             em = discord.Embed(
@@ -486,19 +547,21 @@ async def _send_weekly_stats():
     try:
         uid        = str(MY_USER_ID)
         total_jobs = db.get_job_count()
-        applied    = len(db.get_user_jobs_by_status(uid, "applied"))   if hasattr(db, "get_user_jobs_by_status") else "?"
-        interviews = len(db.get_user_jobs_by_status(uid, "interview")) if hasattr(db, "get_user_jobs_by_status") else "?"
-        offers     = len(db.get_user_jobs_by_status(uid, "offer"))     if hasattr(db, "get_user_jobs_by_status") else "?"
+        unreviewed = _db_total_unreviewed()
+        applied    = len(db.get_user_jobs_by_status(uid, "applied"))
+        interviews = len(db.get_user_jobs_by_status(uid, "interview"))
+        offers     = len(db.get_user_jobs_by_status(uid, "offer"))
 
         em = discord.Embed(
             title="📊 Your Weekly PerTern Report",
             description=(
-                f"**{total_jobs:,}** total internships indexed\n\n"
-                f"**Your pipeline this week:**\n"
+                f"**{total_jobs:,}** total internships indexed\n"
+                f"**{unreviewed:,}** waiting for your review\n\n"
+                f"**Your pipeline:**\n"
                 f"• ✅ Applied — **{applied}**\n"
                 f"• 🗣️ Interview — **{interviews}**\n"
                 f"• 🎉 Offer — **{offers}**\n\n"
-                f"Keep pushing — you've got this! 🚀"
+                "Keep pushing! 🚀"
             ),
             color=discord.Color.gold(),
             timestamp=datetime.datetime.now(timezone.utc),
@@ -520,38 +583,18 @@ async def scan_loop():
         log.exception("Scan loop error")
 
 
-@tasks.loop(
-    time=datetime.time(hour=DIGEST_HOUR, minute=0, tzinfo=timezone.utc)
-)
+@tasks.loop(time=datetime.time(hour=DIGEST_HOUR, minute=0, tzinfo=timezone.utc))
 async def daily_digest_loop():
-    """Every day at DIGEST_HOUR UTC — send everything found in the last 24h."""
+    """Morning digest — refresh the summary so you see overnight finds."""
     try:
-        since = datetime.datetime.now(timezone.utc) - datetime.timedelta(hours=24)
-        jobs  = db.get_jobs_since(since.isoformat()) if hasattr(db, "get_jobs_since") else []
-        if not jobs:
-            return
-        _scan_counter_local = max(_scan_batches.keys(), default=0) + 1
-        entries = [{"job": j, "reason": "Daily digest"} for j in jobs]
-        _scan_batches[_scan_counter_local] = entries
-
-        em = discord.Embed(
-            title=f"☀️ Good morning! {len(jobs)} internships from the last 24h",
-            description="Click **Show Jobs** to review everything found overnight.",
-            color=discord.Color.orange(),
-            timestamp=datetime.datetime.now(timezone.utc),
-        )
-        em.set_footer(text=f"PerTern Daily Digest · {db.get_job_count():,} total indexed")
-        dm = await _get_dm()
-        await dm.send(embed=em, view=ScanResultView(_scan_counter_local))
+        await _update_summary(new_count=0)
     except Exception:
         log.exception("Daily digest error")
 
 
-@tasks.loop(
-    time=datetime.time(hour=14, minute=0, tzinfo=timezone.utc)   # Sunday 9am ET
-)
+@tasks.loop(time=datetime.time(hour=14, minute=0, tzinfo=timezone.utc))
 async def weekly_stats_loop():
-    if datetime.datetime.now(timezone.utc).weekday() == 6:  # Sunday
+    if datetime.datetime.now(timezone.utc).weekday() == 6:
         await _send_weekly_stats()
 
 
@@ -564,60 +607,52 @@ async def before_loops():
 
 # ── Slash commands ────────────────────────────────────────────────────────────
 
+def _owner_only(interaction: discord.Interaction) -> bool:
+    return interaction.user.id == MY_USER_ID
+
+
 @tree.command(name="check", description="Trigger a manual scan right now")
 async def slash_check(interaction: discord.Interaction):
-    if interaction.user.id != MY_USER_ID:
-        await interaction.response.send_message("This is a personal bot.", ephemeral=True)
-        return
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.send_message("🔍 Scanning now...", ephemeral=True)
-    results = await _run_scan(label="manual")
-    if not results:
-        await interaction.followup.send("No new matches found this scan.", ephemeral=True)
+    count = await _run_scan(label="manual")
+    await interaction.followup.send(
+        f"Done — {'no new matches' if count == 0 else f'{count} new matches added to your summary'}.",
+        ephemeral=True,
+    )
 
 
-@tree.command(name="stats", description="Your application stats")
+@tree.command(name="stats", description="Your application pipeline stats")
 async def slash_stats(interaction: discord.Interaction):
-    if interaction.user.id != MY_USER_ID:
-        await interaction.response.send_message("This is a personal bot.", ephemeral=True)
-        return
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.defer(ephemeral=True)
     await _send_weekly_stats()
-    await interaction.followup.send("Stats sent to your DMs!", ephemeral=True)
+    await interaction.followup.send("Stats sent!", ephemeral=True)
 
 
-@tree.command(name="applied", description="List all jobs you've marked as applied")
-async def slash_applied(interaction: discord.Interaction):
-    if interaction.user.id != MY_USER_ID:
-        await interaction.response.send_message("This is a personal bot.", ephemeral=True)
-        return
+@tree.command(name="summary", description="Refresh the summary message")
+async def slash_summary(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.defer(ephemeral=True)
-    uid  = str(MY_USER_ID)
-    jobs = db.get_user_jobs_by_status(uid, "applied") if hasattr(db, "get_user_jobs_by_status") else []
-    if not jobs:
-        await interaction.followup.send("No jobs marked as applied yet.", ephemeral=True)
-        return
-    dm = await _get_dm()
-    await dm.send(f"📋 **{len(jobs)} jobs marked as applied:**")
-    for j in jobs[:10]:
-        full = db.get_job(j["job_id"])
-        if full:
-            await dm.send(embed=_make_embed(full, applied=True))
-    await interaction.followup.send(f"Sent {min(len(jobs),10)} applied jobs to your DMs.", ephemeral=True)
+    await _update_summary()
+    await interaction.followup.send("Summary refreshed!", ephemeral=True)
 
 
-@tree.command(name="status", description="Bot status — uptime, jobs indexed, next scan")
+@tree.command(name="status", description="Bot health — uptime, jobs indexed, scan interval")
 async def slash_status(interaction: discord.Interaction):
-    if interaction.user.id != MY_USER_ID:
-        await interaction.response.send_message("This is a personal bot.", ephemeral=True)
-        return
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
     em = discord.Embed(
         title="⚙️ PerTern Status",
         description=(
             f"**Jobs indexed:** {db.get_job_count():,}\n"
+            f"**Unreviewed:** {_db_total_unreviewed():,}\n"
             f"**Scan interval:** every {SCAN_INTERVAL} minutes\n"
             f"**Daily digest:** {DIGEST_HOUR}:00 UTC (~8am ET)\n"
             f"**Salary filter:** {'On' if REQUIRE_SALARY else 'Off'}\n"
-            f"**Scans this session:** {_scan_counter}\n"
         ),
         color=discord.Color.green(),
         timestamp=datetime.datetime.now(timezone.utc),
@@ -631,8 +666,7 @@ async def slash_status(interaction: discord.Interaction):
 async def on_ready():
     log.info("PerTern online as %s", client.user)
     if not MY_USER_ID:
-        log.error("MY_DISCORD_USER_ID not set — can't DM you!")
-        return
+        log.error("MY_DISCORD_USER_ID not set!"); return
     db.init_db()
 
     try:
@@ -649,15 +683,14 @@ async def on_ready():
                 f"Scanning every **{SCAN_INTERVAL} minutes**.\n"
                 f"Daily digest at **{DIGEST_HOUR}:00 UTC** (~8am ET).\n"
                 f"Weekly stats every **Sunday**.\n\n"
-                f"**Filters:** Cybersecurity · Cloud/GCP · Data Analytics · US only\n"
-                f"**Fortune 500 watchlist:** always included\n"
-                f"**Salary filter:** {'On' if REQUIRE_SALARY else 'Off'}\n\n"
                 f"**{db.get_job_count():,}** internships already indexed.\n\n"
-                f"Commands: `/check` `/stats` `/applied` `/status`"
+                f"Commands: `/check` · `/summary` · `/stats` · `/status`"
             ),
             color=discord.Color.green(),
             timestamp=datetime.datetime.now(timezone.utc),
         ))
+        # Post/refresh the summary on startup
+        await _update_summary()
     except Exception as e:
         log.warning("Startup DM failed: %s", e)
 
