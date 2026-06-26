@@ -176,7 +176,7 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
                     ON j.job_id = uj.job_id AND uj.user_id = ?
                 WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
                 AND j.category = ?
-                ORDER BY j.created_at DESC
+                ORDER BY j.first_seen DESC
             """, (uid, category)).fetchall()
         else:
             rows = conn.execute("""
@@ -184,7 +184,7 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
                 LEFT JOIN user_jobs uj
                     ON j.job_id = uj.job_id AND uj.user_id = ?
                 WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped'))
-                ORDER BY j.created_at DESC
+                ORDER BY j.first_seen DESC
             """, (uid,)).fetchall()
     return [dict(r) for r in rows]
 
