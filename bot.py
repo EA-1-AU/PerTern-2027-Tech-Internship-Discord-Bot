@@ -147,20 +147,68 @@ def _make_embed(job: dict) -> discord.Embed:
     return em
 
 
-async def _dm_me(embed: discord.Embed):
-    try:
-        user = await client.fetch_user(MY_USER_ID)
-        dm   = await user.create_dm()
-        await dm.send(embed=embed)
-    except Exception as e:
-        log.warning("DM failed: %s", e)
+# Stores the latest batch of jobs so the Show Jobs button can access them
+# key: scan_id (incrementing int) → list of job dicts
+_scan_batches: dict[int, list[dict]] = {}
+_scan_counter = 0
+
+
+class ScanResultView(discord.ui.View):
+    """One summary message per scan with a paginated Show Jobs button."""
+
+    def __init__(self, scan_id: int, total: int):
+        super().__init__(timeout=None)   # buttons never expire
+        self.scan_id = scan_id
+        self.total   = total
+        self.page    = 0
+        self.PAGE_SIZE = 5
+
+    @discord.ui.button(label="📋 Show Jobs", style=discord.ButtonStyle.primary)
+    async def show_jobs(self, interaction: discord.Interaction, button: discord.ui.Button):
+        jobs = _scan_batches.get(self.scan_id, [])
+        if not jobs:
+            await interaction.response.send_message("No jobs stored for this scan.", ephemeral=False)
+            return
+        self.page = 0
+        await interaction.response.defer()
+        await self._send_page(interaction)
+
+    @discord.ui.button(label="◀", style=discord.ButtonStyle.secondary)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.page = max(0, self.page - 1)
+        await interaction.response.defer()
+        await self._send_page(interaction)
+
+    @discord.ui.button(label="▶", style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        jobs = _scan_batches.get(self.scan_id, [])
+        max_page = max(0, (len(jobs) - 1) // self.PAGE_SIZE)
+        self.page = min(max_page, self.page + 1)
+        await interaction.response.defer()
+        await self._send_page(interaction)
+
+    async def _send_page(self, interaction: discord.Interaction):
+        jobs  = _scan_batches.get(self.scan_id, [])
+        start = self.page * self.PAGE_SIZE
+        batch = jobs[start : start + self.PAGE_SIZE]
+        total_pages = max(1, -(-len(jobs) // self.PAGE_SIZE))  # ceiling div
+
+        for job in batch:
+            try:
+                await interaction.followup.send(embed=_make_embed(job))
+            except Exception as e:
+                log.warning("Page send error: %s", e)
+
+        await interaction.followup.send(
+            f"Page {self.page + 1}/{total_pages} · {len(jobs)} total matches this scan"
+        )
 
 
 async def _run_scan():
+    global _scan_counter
     log.info("Scan starting...")
-    loop       = asyncio.get_event_loop()
+    loop     = asyncio.get_event_loop()
     new_jobs: list[dict] = []
-    queue: asyncio.Queue = asyncio.Queue()
 
     def _on_batch(company: str, raw_jobs: list[dict]):
         for job in raw_jobs:
@@ -190,22 +238,42 @@ async def _run_scan():
                 salary=job.get("salary"),
             )
             new_jobs.append(job)
-            loop.call_soon_threadsafe(queue.put_nowait, job)
 
-    # Run scraper in thread pool
     await loop.run_in_executor(None, lambda: run_all_scrapers(on_batch=_on_batch))
-    queue.put_nowait(None)  # sentinel
 
-    # Drain queue and DM each match
-    count = 0
-    while True:
-        job = await queue.get()
-        if job is None:
-            break
-        await _dm_me(_make_embed(job))
-        count += 1
+    count = len(new_jobs)
+    log.info("Scan done — %d new matches found", count)
 
-    log.info("Scan done — %d new matches DMed to you", count)
+    if count == 0:
+        return 0
+
+    # Store batch and send ONE summary DM with a button
+    _scan_counter += 1
+    scan_id = _scan_counter
+    _scan_batches[scan_id] = new_jobs
+
+    # Build category breakdown for the summary
+    cats: dict[str, int] = {}
+    for job in new_jobs:
+        c = job.get("category") or "Other"
+        cats[c] = cats.get(c, 0) + 1
+    breakdown = "\n".join(f"• {c} — **{n}**" for c, n in sorted(cats.items(), key=lambda x: -x[1]))
+
+    em = discord.Embed(
+        title=f"🔍 {count} new internship{'s' if count != 1 else ''} found",
+        description=f"{breakdown}\n\nClick **Show Jobs** to browse them.",
+        color=discord.Color.from_rgb(88, 101, 242),
+        timestamp=datetime.now(timezone.utc),
+    )
+    em.set_footer(text=f"PerTern · Scan #{scan_id} · {db.get_job_count():,} total indexed")
+
+    try:
+        user = await client.fetch_user(MY_USER_ID)
+        dm   = await user.create_dm()
+        await dm.send(embed=em, view=ScanResultView(scan_id, count))
+    except Exception as e:
+        log.warning("Summary DM failed: %s", e)
+
     return count
 
 
