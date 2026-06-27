@@ -474,9 +474,20 @@ _LOC_MODE_RE = re.compile(r'\b(Remote|Hybrid|On-?[Ss]ite)\b')
 # Matches "Washington, D.C." specifically
 _LOC_DC_RE = re.compile(r'Washington,?\s*D\.?C\.?', re.IGNORECASE)
 
+# Matches ANY "Word Word, Word Word" city/region after a separator — catches international locations
+_LOC_ANY_RE = re.compile(
+    r'[-–|]\s*([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2},\s*[A-Z][A-Za-z]+(?: [A-Za-z]+){0,3})'
+    r'(?:\s*$|\s*[-|]|\s*\d)'
+)
+
+_US_STATE_SET = set(_US_STATES.split("|"))
+
 
 def refine_location(title: str, current_location: str) -> str:
-    """Return a better location string by cross-referencing the job title."""
+    """Return a better location string by cross-referencing the job title.
+
+    Also detects non-US locations so _is_us_location() can reject them.
+    """
     if current_location.lower().strip() not in _GENERIC_LOCATIONS:
         return current_location  # already specific, trust the scraper
 
@@ -486,15 +497,24 @@ def refine_location(title: str, current_location: str) -> str:
     if _LOC_DC_RE.search(text):
         return "Washington, D.C."
 
-    # City, ST pattern
+    # Remote / Hybrid / On-site (check before city so "Remote - Austin, TX" stays Remote)
+    m = _LOC_MODE_RE.search(title)
+    if m:
+        return m.group(1).replace("onsite", "On-site").replace("Onsite", "On-site")
+
+    # US City, ST pattern
     m = _LOC_CITY_RE.search(title)
     if m:
         return m.group(1).strip()
 
-    # Remote / Hybrid / On-site
-    m = _LOC_MODE_RE.search(title)
+    # Any City, Region pattern — if the region is NOT a US state, return it raw
+    # so _is_us_location() will correctly reject the job
+    m = _LOC_ANY_RE.search(title)
     if m:
-        return m.group(1).replace("onsite", "On-site").replace("Onsite", "On-site")
+        candidate = m.group(1).strip()
+        region = candidate.split(",")[-1].strip()
+        if region not in _US_STATE_SET:
+            return candidate  # non-US location — will be filtered out downstream
 
     return current_location
 
