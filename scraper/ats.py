@@ -201,14 +201,6 @@ def fetch_workday(company):
             break
         for p in postings:
             ext_path = p.get("externalPath", "")
-            # Workday externalPath varies by company:
-            # /BoardName/job/Location/Title_ID  or  /en-US/External/job/Title_ID
-            # The only stable part is the final Title_ID segment.
-            # Build /job/{Title_ID} which Workday resolves correctly for all tenants.
-            if ext_path and "/job/" in ext_path:
-                after_job = ext_path[ext_path.index("/job/") + 5:]  # everything after /job/
-                job_slug = after_job.rstrip("/").split("/")[-1]      # last segment = Title_ID
-                ext_path = f"/job/{job_slug}"
             url = f"https://{domain}{ext_path}" if ext_path else ""
             jobs.append({
                 "job_id":      make_id("workday", company_name, p.get("title", ""), url),
