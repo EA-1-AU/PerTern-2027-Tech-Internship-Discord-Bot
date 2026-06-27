@@ -1010,6 +1010,58 @@ async def slash_export(interaction: discord.Interaction):
     await interaction.followup.send("Export sent to your DMs!", ephemeral=True)
 
 
+@tree.command(name="deactivated", description="Export deactivated and erroring companies to CSV")
+async def slash_deactivated(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+
+    import csv, io, sqlite3 as _sq
+    with _sq.connect(db.DB_PATH) as con:
+        con.row_factory = _sq.Row
+        deactivated = con.execute(
+            "SELECT name, source, url, slug, fail_count, active FROM companies "
+            "WHERE active=0 OR fail_count>0 ORDER BY active ASC, fail_count DESC, name ASC"
+        ).fetchall()
+
+    if not deactivated:
+        await interaction.followup.send("No deactivated or erroring companies.", ephemeral=True)
+        return
+
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=["company", "source", "status", "fail_count", "reason", "url", "slug"])
+    writer.writeheader()
+    for r in deactivated:
+        active     = r["active"]
+        fail_count = r["fail_count"]
+        if active == 0 and fail_count >= 3:
+            status = "Deactivated"
+            reason = f"Auto-deactivated after {fail_count} consecutive scrape failures"
+        elif active == 0:
+            status = "Deactivated"
+            reason = "Manually deactivated or removed from CSV"
+        else:
+            status = "Erroring"
+            reason = f"{fail_count} consecutive scrape failure(s) — not yet deactivated"
+        writer.writerow({
+            "company":    r["name"],
+            "source":     r["source"],
+            "status":     status,
+            "fail_count": fail_count,
+            "reason":     reason,
+            "url":        r["url"] or "",
+            "slug":       r["slug"] or "",
+        })
+
+    buf.seek(0)
+    fname = f"pertern_deactivated_{datetime.datetime.now().strftime('%Y%m%d')}.csv"
+    await interaction.followup.send(
+        content=f"📎 **{len(deactivated)} companies** with issues",
+        file=discord.File(fp=io.BytesIO(buf.getvalue().encode()), filename=fname),
+        ephemeral=True,
+    )
+
+
 @tree.command(name="pipeline", description="See your full application funnel with company names")
 async def slash_pipeline(interaction: discord.Interaction):
     if not _owner_only(interaction):
