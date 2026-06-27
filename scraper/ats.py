@@ -283,6 +283,59 @@ def fetch_simplify(company):
     return jobs
 
 
+def fetch_github_md_table(company):
+    """
+    Parses a GitHub README markdown table with columns:
+    Company | Role | Location | Apply | Added
+    Used for community-maintained lists like sndsh404/summer-2027-internships.
+    company["url"] should be the raw README URL.
+    """
+    r = requests.get(company["url"], headers=USER_AGENT, timeout=30)
+    r.raise_for_status()
+    text = r.text
+    _EMOJI_RE = re.compile(
+        r'[\U0001F1E0-\U0001F1FF'   # flags
+        r'\U0001F300-\U0001F9FF'    # misc symbols
+        r'☀-⛿'
+        r'✀-➿]+',
+    )
+    jobs = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line.startswith('|') or '---' in line:
+            continue
+        cols = [c.strip() for c in line.strip('|').split('|')]
+        if len(cols) < 4:
+            continue
+        comp_name, title_raw, location, apply_col = cols[0], cols[1], cols[2], cols[3]
+        # Skip header row
+        if title_raw.lower() in ('role', 'position', 'title'):
+            continue
+        # Skip closed listings (🔒)
+        if '\U0001F512' in title_raw or '\U0001F512' in comp_name:
+            continue
+        # Extract apply URL from markdown link [apply](url)
+        url_m = re.search(r'\[.*?\]\((https?://[^\)]+)\)', apply_col)
+        if not url_m:
+            continue
+        url = url_m.group(1)
+        # Clean emojis and flags from title and company
+        title    = _EMOJI_RE.sub('', title_raw).strip()
+        comp_clean = _EMOJI_RE.sub('', comp_name).strip()
+        if not title or not comp_clean:
+            continue
+        jobs.append({
+            "job_id":   make_id("github_md", comp_clean, title, url),
+            "company":  comp_clean,
+            "source":   "github_md",
+            "title":    title,
+            "location": location.strip(),
+            "url":      url,
+            "description": "",
+        })
+    return jobs
+
+
 def looks_like_job_link(title, href):
     text = f"{title} {href}".lower()
     if not is_internship_title(text):

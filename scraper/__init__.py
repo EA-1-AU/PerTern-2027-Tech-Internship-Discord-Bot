@@ -21,6 +21,7 @@ from scraper.ats import (
     fetch_oracle,
     fetch_adp,
     fetch_icims,
+    fetch_github_md_table,
 )
 
 log = logging.getLogger("pertern.scraper")
@@ -36,6 +37,7 @@ _FETCHERS = {
     "oracle":          lambda c: fetch_oracle(c),
     "adp":             lambda c: fetch_adp(c),
     "icims":           lambda c: fetch_icims(c),
+    "github_md":       lambda c: fetch_github_md_table(c),
 }
 
 

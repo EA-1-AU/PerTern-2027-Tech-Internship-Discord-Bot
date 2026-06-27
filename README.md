@@ -200,6 +200,15 @@ PerTern/
 
 ---
 
+---
+
+## Keywords
+
+<!-- searchability -->
+2027 internships · summer 2027 internships · fall 2027 internships · spring 2027 internships · tech internships 2027 · software engineering internship 2027 · cybersecurity internship 2027 · data science internship 2027 · cloud engineering internship 2027 · AI internship 2027 · Discord internship bot · internship tracker Discord · automated internship finder · Greenhouse scraper · Workday internship scraper · Lever internship · Ashby jobs · SimplifyJobs · internship alert bot · Discord DM bot · Raspberry Pi Discord bot · Python Discord bot · internship aggregator · job board scraper · 2027 SWE intern · 2027 tech recruit
+
+---
+
 <div align="center">
 
 Made with ☕ · [Report an issue](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot/issues)
