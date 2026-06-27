@@ -1,5 +1,5 @@
 """
-Database layer for DisTern — worldwide internship Discord bot.
+Database layer for PerTern — worldwide internship Discord bot.
 
 Single SQLite file, no ORM. Schema is migration-safe via ALTER TABLE.
 """
@@ -10,7 +10,7 @@ import datetime
 from pathlib import Path
 from contextlib import contextmanager
 
-DB_PATH = Path(__file__).parent / "distern.db"
+DB_PATH = Path(__file__).parent / "pertern.db"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS companies (

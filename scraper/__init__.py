@@ -23,7 +23,7 @@ from scraper.ats import (
     fetch_icims,
 )
 
-log = logging.getLogger("distern.scraper")
+log = logging.getLogger("pertern.scraper")
 
 _FETCHERS = {
     "greenhouse":      lambda c: fetch_greenhouse(c["slug"] or c["name"].lower().replace(" ", "")),
