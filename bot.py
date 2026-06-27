@@ -1036,8 +1036,28 @@ async def slash_stats(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.defer(ephemeral=True)
-    await _send_weekly_stats()
-    await interaction.followup.send("Stats sent!", ephemeral=True)
+
+    uid        = str(MY_USER_ID)
+    total_jobs = db.get_job_count()
+    unreviewed = _db_total_unreviewed()
+    applied    = len(db.get_user_jobs_by_status(uid, "applied"))
+    interviews = len(db.get_user_jobs_by_status(uid, "interview"))
+    offers     = len(db.get_user_jobs_by_status(uid, "offer"))
+
+    em = discord.Embed(
+        title="📊 PerTern Stats",
+        description=(
+            f"**{total_jobs:,}** total internships indexed\n"
+            f"**{unreviewed:,}** waiting for your review\n\n"
+            f"**Your pipeline:**\n"
+            f"• ✅ Applied — **{applied}**\n"
+            f"• 🗣️ Interview — **{interviews}**\n"
+            f"• 🎉 Offer — **{offers}**"
+        ),
+        color=discord.Color.gold(),
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+    await interaction.followup.send(embed=em, ephemeral=True)
 
 
 @tree.command(name="summary", description="Refresh the summary message")
