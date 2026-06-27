@@ -31,11 +31,9 @@ Ubisoft,workday,,https://ubisoft.wd3.myworkdayjobs.com/Ubisoft_Careers,
 Nintendo of America,workday,,https://nintendo.wd1.myworkdayjobs.com/Nintendo_Careers,
 Sony Interactive Entertainment,workday,,https://sonyinteractive.wd1.myworkdayjobs.com/US,
 Zynga,workday,,https://zynga.wd5.myworkdayjobs.com/External,
-Valve,greenhouse,valve,,
 Rockstar Games,workday,,https://rockstargames.wd5.myworkdayjobs.com/RockstarGames,
 2K Games,workday,,https://2k.wd1.myworkdayjobs.com/2K_Careers,
 Bandai Namco Entertainment,workday,,https://bandainamcoent.wd3.myworkdayjobs.com/Careers,
-CD Projekt,greenhouse,cdprojekt,,
 Squarespace,greenhouse,squarespace,,
 Zscaler,greenhouse,zscaler,,
 Airbnb,greenhouse,airbnb,,
@@ -69,7 +67,7 @@ SoFi,greenhouse,sofi,,
 Five9,greenhouse,five9,,
 Sentry,greenhouse,getsentry,,
 Toast,greenhouse,toasttab,,
-Benchling,greenhouse,benchling,,
+Benchling,ashby,benchling,,
 Natera,greenhouse,natera,,
 Sardine,ashby,sardine,,
 Browserbase,ashby,browserbase,,
@@ -86,14 +84,13 @@ Modal,ashby,modal,,
 Runway,ashby,runway,,
 Pinecone,ashby,pinecone,,
 Replit,ashby,replit,,
-Anduril,ashby,anduril-industries,,1
+Anduril,greenhouse,andurilindustries,,1
 Retool,ashby,retool,,
 Rippling,ashby,rippling,,
 Writer,ashby,writer,,
 Cognition,ashby,cognition,,
 Physical Intelligence,ashby,physicalintelligence,,
 Perplexity,ashby,perplexity,,
-Groq,ashby,groq,,
 dbt Labs,ashby,dbt-labs,,
 Temporal,ashby,temporal,,
 Netflix,lever,netflix,,
@@ -120,7 +117,7 @@ CVS Health,workday,,https://cvshealth.wd1.myworkdayjobs.com/CVS_Health_Careers,
 Cigna,workday,,https://cigna.wd1.myworkdayjobs.com/Cigna_External,
 Thermo Fisher,workday,,https://thermofisher.wd5.myworkdayjobs.com/ThermoFisherCareers,
 Abbott,workday,,https://abbott.wd5.myworkdayjobs.com/abbottcareers,
-Workday,workday,,https://workday.wd5.myworkdayjobs.com/Workday,
+Workday,workday,,https://workday.wd5.myworkdayjobs.com/Workday_Early_Career,
 Adobe,workday,,https://adobe.wd5.myworkdayjobs.com/external_experienced,
 Johnson & Johnson,workday,,https://jnj.wd5.myworkdayjobs.com/JNJ,
 Humana,workday,,https://humana.wd5.myworkdayjobs.com/Humana_External_Career_Site,
@@ -165,7 +162,7 @@ ManTech,workday,,https://mantech.wd1.myworkdayjobs.com/External,
 Leidos,workday,,https://leidos.wd5.myworkdayjobs.com/External,
 Raytheon,workday,,https://raytheon.wd5.myworkdayjobs.com/RTXCORP,
 Lockheed Martin,workday,,https://lmcocareers.wd5.myworkdayjobs.com/LMCareers,
-Boeing,workday,,https://boeing.wd1.myworkdayjobs.com/EXTERNAL_CAREERS,
+Boeing,workday,,https://boeing.wd1.myworkdayjobs.com/INTERN,
 Booz Allen Hamilton,workday,,https://boozallen.wd1.myworkdayjobs.com/External,
 KPMG,workday,,https://kpmg.wd1.myworkdayjobs.com/KPMG_US_Careers,
 EY,workday,,https://ey.wd5.myworkdayjobs.com/EY_External_Careers,
@@ -331,7 +328,7 @@ Abnormal Security,greenhouse,abnormalsecurity,,
 Recorded Future,greenhouse,recordedfuture,,
 Varonis,workday,,https://varonis.wd1.myworkdayjobs.com/External,
 New Relic,greenhouse,newrelic,,
-Grafana Labs,ashby,grafana-labs,,
+Grafana Labs,greenhouse,grafanalabs,,
 Arctic Wolf,workday,,https://arcticwolf.wd1.myworkdayjobs.com/External,
 Axonius,greenhouse,axonius,,
 Orca Security,greenhouse,orcasecurity,,
@@ -358,9 +355,9 @@ Qlik,workday,,https://qlik.wd1.myworkdayjobs.com/Qlik_Careers,
 ThoughtSpot,workday,,https://thoughtspot.wd5.myworkdayjobs.com/External,
 Domo,workday,,https://domo.wd1.myworkdayjobs.com/Domo_Careers,
 Trellix,workday,,https://trellix.wd5.myworkdayjobs.com/External,
-HackerOne,workday,,https://hackerone.wd5.myworkdayjobs.com/External,
+HackerOne,ashby,hackerone,,
 Bugcrowd,greenhouse,bugcrowd,,
-Northrop Grumman,icims,,https://careers-northropgrumman.icims.com/jobs/search,1
+Northrop Grumman,custom,,https://jobs.northropgrumman.com/careers?query=intern,1
 General Dynamics,workday,,https://gdmissionsystems.wd5.myworkdayjobs.com/External,0
 Razer,workday,,https://razer.wd3.myworkdayjobs.com/Careers,
 Corsair,adp,,https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=78782be6-776d-448b-ac5a-228b26928a28,
@@ -373,7 +370,7 @@ Gearbox Software,workday,,https://gearbox.wd1.myworkdayjobs.com/External,
 Wizards of the Coast,workday,,https://hasbro.wd5.myworkdayjobs.com/Hasbro_Careers,
 Krafton,greenhouse,krafton,,
 MSI,adp,,https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=fc5961f7-407a-4cc5-990c-a15241a03d70,
-Meta,greenhouse,facebook,,1
+Meta,custom,,https://www.metacareers.com/results/?q=internship&s=Jobs,1
 Intuit,workday,,https://intuit.wd1.myworkdayjobs.com/Intuit_Careers,
 Autodesk,workday,,https://autodesk.wd1.myworkdayjobs.com/Ext,
 Zoom,workday,,https://zoom.wd5.myworkdayjobs.com/External,
@@ -406,7 +403,7 @@ KnowBe4,greenhouse,knowbe4,,
 Confluent,ashby,confluent,,
 Fivetran,greenhouse,fivetran,,
 Airbyte,ashby,airbyte,,
-Astronomer,lever,astronomer,,
+Astronomer,ashby,astronomer,,
 Harness,greenhouse,harnessinc,,
 Peraton,icims,,https://careers-peraton.icims.com/jobs/search,0
 General Dynamics Mission Systems,icims,,https://careers-gdms.icims.com/jobs/search,0
@@ -427,14 +424,9 @@ Informatica,workday,,https://informatica.wd1.myworkdayjobs.com/US_External,0
 MicroFocus,workday,,https://microfocus.wd3.myworkdayjobs.com/MicroFocusCareers,0
 Elastic,greenhouse,elastic,,0
 Fastly,greenhouse,fastly,,0
-Lacework,greenhouse,lacework,,0
 Kong,greenhouse,kong,,0
-HashiCorp,greenhouse,hashicorp,,0
 dbt Labs,ashby,dbt-labs,,0
 Monte Carlo,ashby,montecarlodata,,0
 Immuta,greenhouse,immuta,,0
 Cyera,greenhouse,cyera,,0
 Semgrep,greenhouse,semgrep,,0
-Snyk,workday,,https://snyk.wd1.myworkdayjobs.com/SnykCareers,0
-SentinelOne,workday,,https://sentinelone.wd5.myworkdayjobs.com/External,0
-Wiz,workday,,https://wiz.wd3.myworkdayjobs.com/Wiz_External,0

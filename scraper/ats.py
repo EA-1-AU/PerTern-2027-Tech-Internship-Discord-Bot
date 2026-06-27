@@ -163,16 +163,17 @@ def fetch_smartrecruiters(company_slug):
     return jobs
 
 
-def _workday_post(api_url, payload, headers):
+def _workday_post(api_url, payload, headers, session=None):
     """POST to Workday API with up to 3 payload variations before giving up."""
-    r = requests.post(api_url, json=payload, headers=headers, timeout=30)
+    poster = session.post if session else requests.post
+    r = poster(api_url, json=payload, headers=headers, timeout=30)
     if r.status_code == 422:
         # Some boards reject searchText
         p2 = {k: v for k, v in payload.items() if k != "searchText"}
-        r = requests.post(api_url, json=p2, headers=headers, timeout=30)
+        r = poster(api_url, json=p2, headers=headers, timeout=30)
     if r.status_code == 422:
         # Some boards reject appliedFacets too — bare minimum
-        r = requests.post(
+        r = poster(
             api_url,
             json={"limit": payload.get("limit", 20), "offset": payload.get("offset", 0)},
             headers=headers,
@@ -199,12 +200,24 @@ def fetch_workday(company):
     board  = parsed.path.strip("/") # PfizerCareers
 
     api_url = f"https://{domain}/wday/cxs/{tenant}/{board}/jobs"
-    headers = {**USER_AGENT, "Content-Type": "application/json", "Accept": "application/json"}
+    headers = {
+        **USER_AGENT,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Referer": f"https://{domain}/{board}",
+    }
+
+    # Establish a session with cookies by visiting the board page first
+    session = requests.Session()
+    try:
+        session.get(f"https://{domain}/{board}", headers=USER_AGENT, timeout=10)
+    except Exception:
+        pass
 
     jobs, offset, limit = [], 0, 20
     while True:
         payload = {"limit": limit, "offset": offset, "searchText": "intern", "appliedFacets": {}}
-        r = _workday_post(api_url, payload, headers)
+        r = _workday_post(api_url, payload, headers, session=session)
         if r is None:
             break   # board rejected all payload variants
         data = r.json()
@@ -463,76 +476,97 @@ def fetch_usajobs(api_key: str, email: str) -> list[dict]:
 
 def fetch_icims(company: dict) -> list[dict]:
     """
-    iCIMS public jobs search API.
-    URL format in CSV: https://{slug}.icims.com/jobs/search
-    or: https://careers-{slug}.icims.com/jobs/search
-    The slug is the company's iCIMS subdomain.
+    iCIMS public job search — scrapes the HTML search results page.
+    URL format in CSV: https://careers-{slug}.icims.com/jobs/search
     """
     from urllib.parse import urlparse
     company_name = company["name"]
     raw_url = company.get("url", "")
     parsed = urlparse(raw_url)
-    host = parsed.netloc  # e.g. careers-northropgrumman.icims.com
+    host = parsed.netloc  # e.g. careers-gdit.icims.com
+    base = f"https://{host}"
 
-    api_base = f"https://{host}"
-    headers = {
-        **USER_AGENT,
-        "Accept": "application/json",
-        "X-Requested-With": "XMLHttpRequest",
-    }
-
-    jobs = []
+    jobs: list[dict] = []
+    seen: set[str] = set()
     page = 1
 
     while True:
         r = requests.get(
-            f"{api_base}/jobs/search",
+            f"{base}/jobs/search",
             params={
                 "ss": "1",
                 "searchRelation": "keyword_all",
                 "searchKeyword": "intern",
-                "searchLocation": "",
-                "searchCategory": "",
                 "in_iframe": "1",
                 "page": page,
             },
-            headers=headers,
+            headers=USER_AGENT,
             timeout=30,
         )
         r.raise_for_status()
 
-        try:
-            data = r.json()
-        except Exception:
-            break
+        soup = BeautifulSoup(r.text, "html.parser")
 
-        postings = data.get("jobs") or data.get("results") or data.get("positions") or []
-        if not postings:
-            break
+        # iCIMS wraps each listing in an <article> or a div with class containing "iCIMS"
+        articles = soup.find_all("article") or soup.find_all("div", class_=re.compile(r"iCIMS.*Row|iCIMS.*Job", re.I))
+        if not articles:
+            # Fallback: any anchor pointing to /jobs/{id}/
+            articles = [a for a in soup.find_all("a", href=re.compile(r"/jobs/\d+/"))]
 
-        for job in postings:
-            title = job.get("jobtitle") or job.get("title") or job.get("Title") or ""
-            if not is_internship_title(title):
+        found_any = False
+        for item in articles:
+            # Try to find the job link inside this element (or use it directly if it's an <a>)
+            if item.name == "a":
+                link = item
+            else:
+                link = item.find("a", href=re.compile(r"/jobs/\d+/"))
+            if not link:
                 continue
-            job_id = str(job.get("id") or job.get("jobId") or job.get("Id") or "")
-            location = job.get("joblocation") or job.get("location") or ""
-            if isinstance(location, dict):
-                location = location.get("name") or location.get("city") or ""
-            job_url = job.get("applyUrl") or job.get("url") or f"{api_base}/jobs/{job_id}/job"
+
+            href = link.get("href", "")
+            full_url = href if href.startswith("http") else f"{base}{href}"
+            if full_url in seen:
+                continue
+
+            title = clean_text(link.get_text(" ", strip=True))
+            if not title or not is_internship_title(title):
+                # Also check text around the link
+                parent_text = clean_text(item.get_text(" ", strip=True)) if item.name != "a" else title
+                if not is_internship_title(parent_text):
+                    continue
+                if not title:
+                    title = parent_text[:120]
+
+            # Extract job ID from URL path: /jobs/12345/title/job
+            id_match = re.search(r"/jobs/(\d+)/", href)
+            job_id = id_match.group(1) if id_match else href
+
+            # Location: look for a sibling span or div near the link
+            location = ""
+            if item.name != "a":
+                loc_el = item.find(class_=re.compile(r"location|city|joblocation", re.I))
+                if loc_el:
+                    location = clean_text(loc_el.get_text(" ", strip=True))
+
+            seen.add(full_url)
+            found_any = True
             jobs.append({
                 "job_id": f"icims:{host}:{job_id}",
                 "company": company_name,
                 "source": "iCIMS",
                 "title": title,
-                "location": str(location),
-                "url": job_url,
+                "location": location,
+                "url": full_url,
                 "description": "",
             })
 
-        total = data.get("totalResults") or data.get("total") or 0
-        if len(jobs) >= total or len(postings) == 0:
+        # Check for next page — iCIMS uses ?page= param
+        next_link = soup.find("a", string=re.compile(r"next|›|»", re.I))
+        if not next_link or not found_any:
             break
         page += 1
+        if page > 20:
+            break
 
     return jobs
 
