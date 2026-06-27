@@ -451,6 +451,54 @@ def is_probably_real_internship(title: str) -> bool:
     return bool(_INTERN_WORD.search(title or ""))
 
 
+_GENERIC_LOCATIONS = {
+    "", "united states", "us", "usa", "multiple locations", "various",
+    "multiple", "see posting", "nationwide", "north america",
+}
+
+_US_STATES = (
+    "AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|"
+    "MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC"
+)
+
+# Matches "City, ST" or "City Name, ST" after a separator like - | ( ,
+_LOC_CITY_RE = re.compile(
+    r'(?:^|[-–|,(]\s*)'
+    r'([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2},\s*(?:' + _US_STATES + r'))'
+    r'(?:\s|$|\))',
+)
+
+# Matches bare work-mode keywords
+_LOC_MODE_RE = re.compile(r'\b(Remote|Hybrid|On-?[Ss]ite)\b')
+
+# Matches "Washington, D.C." specifically
+_LOC_DC_RE = re.compile(r'Washington,?\s*D\.?C\.?', re.IGNORECASE)
+
+
+def refine_location(title: str, current_location: str) -> str:
+    """Return a better location string by cross-referencing the job title."""
+    if current_location.lower().strip() not in _GENERIC_LOCATIONS:
+        return current_location  # already specific, trust the scraper
+
+    text = title + " " + current_location
+
+    # Check for D.C. first (special punctuation)
+    if _LOC_DC_RE.search(text):
+        return "Washington, D.C."
+
+    # City, ST pattern
+    m = _LOC_CITY_RE.search(title)
+    if m:
+        return m.group(1).strip()
+
+    # Remote / Hybrid / On-site
+    m = _LOC_MODE_RE.search(title)
+    if m:
+        return m.group(1).replace("onsite", "On-site").replace("Onsite", "On-site")
+
+    return current_location
+
+
 def tag_job(job: dict) -> dict:
     title       = job.get("title", "")
     description = job.get("description", "")
@@ -461,4 +509,5 @@ def tag_job(job: dict) -> dict:
     job["term"]        = guess_term(title, description, url)
     job["salary"]      = guess_salary(description)
     job["deadline"]    = guess_deadline(description)
+    job["location"]    = refine_location(title, job.get("location", ""))
     return job
