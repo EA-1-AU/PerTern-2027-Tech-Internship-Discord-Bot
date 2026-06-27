@@ -19,6 +19,7 @@ from scraper.ats import (
     fetch_simplify,
     fetch_custom_company,
     fetch_oracle,
+    fetch_adp,
 )
 
 log = logging.getLogger("distern.scraper")
@@ -32,6 +33,7 @@ _FETCHERS = {
     "simplify":        lambda c: fetch_simplify(c),
     "custom":          lambda c: fetch_custom_company(c),
     "oracle":          lambda c: fetch_oracle(c),
+    "adp":             lambda c: fetch_adp(c),
 }
 
 

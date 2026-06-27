@@ -461,6 +461,87 @@ def fetch_usajobs(api_key: str, email: str) -> list[dict]:
     return jobs
 
 
+def fetch_adp(company: dict) -> list[dict]:
+    """
+    ADP WorkforceNow public jobs API.
+    URL format in CSV:  https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html?cid=XXXX
+    The cid is the company's unique ADP client ID.
+    """
+    from urllib.parse import urlparse, parse_qs
+    company_name = company["name"]
+    raw_url = company.get("url", "")
+    parsed = urlparse(raw_url)
+    params = parse_qs(parsed.query)
+    cid = (params.get("cid") or params.get("client") or [None])[0]
+    if not cid:
+        raise ValueError(f"No cid found in ADP URL for {company_name}")
+
+    api_url = "https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html"
+    headers = {
+        **USER_AGENT,
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+
+    jobs = []
+    offset = 0
+    limit = 50
+
+    while True:
+        r = requests.get(
+            api_url,
+            params={
+                "cid": cid,
+                "ccId": "19000101_000001",
+                "type": "MP",
+                "lang": "en_US",
+                "selectedMenuKey": "CurrentOpenings",
+                "offset": offset,
+                "limit": limit,
+            },
+            headers=headers,
+            timeout=30,
+        )
+        r.raise_for_status()
+
+        try:
+            data = r.json()
+        except Exception:
+            break
+
+        postings = data.get("jobPostings") or data.get("jobs") or []
+        if not postings:
+            break
+
+        for job in postings:
+            title = job.get("Title") or job.get("title") or ""
+            if not is_internship_title(title):
+                continue
+            job_id = job.get("Id") or job.get("id") or job.get("jobId") or ""
+            location = job.get("Location") or job.get("location") or ""
+            if isinstance(location, dict):
+                location = location.get("name") or location.get("locationName") or ""
+            job_url = (
+                f"https://workforcenow.adp.com/mascsr/default/mdf/recruitment/recruitment.html"
+                f"?cid={cid}&ccId=19000101_000001&lang=en_US&jobId={job_id}"
+            )
+            jobs.append({
+                "job_id": f"adp:{cid}:{job_id}",
+                "company": company_name,
+                "source": "ADP",
+                "title": title,
+                "location": str(location),
+                "url": job_url,
+                "description": "",
+            })
+
+        if len(postings) < limit:
+            break
+        offset += limit
+
+    return jobs
+
+
 def fetch_job_description(job: dict) -> str:
     """
     Fetch the full job description on-demand for a stored job.
