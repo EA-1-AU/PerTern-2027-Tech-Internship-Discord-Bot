@@ -287,7 +287,7 @@ def fetch_github_md_table(company):
     """
     Parses a GitHub README markdown table with columns:
     Company | Role | Location | Apply | Added
-    Used for community-maintained lists like sndsh404/summer-2027-internships.
+    Used for community-maintained GitHub markdown internship lists.
     company["url"] should be the raw README URL.
     """
     r = requests.get(company["url"], headers=USER_AGENT, timeout=30)
