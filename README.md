@@ -10,7 +10,7 @@
 
 **Your personal internship feed — delivered straight to your Discord DMs.**
 
-PerTern scrapes **427+ company career pages** every 10 minutes, filters for internships that match your background, and sends each new match directly to you via Discord DM. No server. No channels. Just you.
+PerTern scrapes **427+ company career pages** every 10 minutes, filters for internships that match your background, and sends each new match directly to you via Discord DM. No server. No channels. Just you. Eventually will have a discord bot for ease of use.
 
 [![Version](https://img.shields.io/badge/version-1.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
