@@ -1,5 +1,5 @@
 """
-Auto-tagging for DisTern: category, subcategory, term, location, salary, deadline.
+Auto-tagging for PerTern: category, subcategory, term, location, salary, deadline.
 """
 
 import re
