@@ -4,7 +4,6 @@ Queries active companies from the DB and dispatches to the right ATS fetcher.
 """
 
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -20,7 +19,6 @@ from scraper.ats import (
     fetch_simplify,
     fetch_custom_company,
     fetch_oracle,
-    fetch_usajobs,
 )
 
 log = logging.getLogger("distern.scraper")
@@ -65,19 +63,6 @@ def run_all_scrapers(on_batch=None) -> list[dict]:
             count, deactivated = db.record_company_failure(company["name"], company["source"])
             if deactivated:
                 log.info("Deactivated %s after %d failures", company["name"], count)
-
-    # ── USAJobs (job board, not per-company) ─────────────────────────────────
-    usajobs_key   = os.getenv("USAJOBS_API_KEY", "")
-    usajobs_email = os.getenv("USAJOBS_EMAIL", "")
-    if usajobs_key and usajobs_email:
-        try:
-            usa_jobs = fetch_usajobs(usajobs_key, usajobs_email) or []
-            log.info("  ✓ %-35s  %d jobs", "USAJobs", len(usa_jobs))
-            all_jobs.extend(usa_jobs)
-            if on_batch and usa_jobs:
-                on_batch("USAJobs", usa_jobs)
-        except Exception as e:
-            log.warning("  ✗ USAJobs  %s", e)
 
     log.info("Scraped %d companies → %d raw jobs", len(companies), len(all_jobs))
     return all_jobs
