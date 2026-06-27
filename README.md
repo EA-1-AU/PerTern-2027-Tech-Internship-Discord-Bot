@@ -28,7 +28,7 @@ PerTern scrapes **427+ company career pages** every 10 minutes, filters for inte
 - **Personalized matching** — filters for roles aligned to your skills: Cybersecurity, Cloud/GCP, Data Analytics, Python, SQL, Linux, Network Security, IT Support, AI/ML
 - **Discord DMs only** — no server required, matches land directly in your inbox
 - **Deduplication** — never sends the same listing twice
-- **2027 filter** — only surfaces Summer/Fall 2027 internships; drops 2026 and undated listings
+- **2027 filter** — only surfaces Spring, Summer, and Fall 2027 internships; drops 2026 and undated listings
 - **Auto-deadline detection** — scans job descriptions for deadline phrases and flags them with ⏰; embed turns orange (⚠️) if ≤7 days away, red (🚨) if ≤3 days
 - **Smart location** — if the scraper returns a generic location, the title is parsed to extract the real city/state or Remote/Hybrid status
 - **Rotating bot status** — 10 cycling presence messages so the bot feels alive
