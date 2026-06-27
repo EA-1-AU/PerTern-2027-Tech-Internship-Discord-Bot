@@ -467,7 +467,8 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
         new_uj = db.get_user_job(uid, job.get("job_id", ""))
         new_st = (new_uj or {}).get("status", "")
         em     = _make_job_embed(job, index=next_idx, total=len(jobs), status=new_st)
-        await interaction.response.edit_message(embed=em, view=BrowseView(job))
+        await interaction.response.edit_message(embed=em, view=BrowseView(job, message=interaction.message))
+        asyncio.create_task(_update_summary())
 
 
 # ── Browse UI ─────────────────────────────────────────────────────────────────
@@ -1353,24 +1354,42 @@ async def on_ready():
 
 
 _STATUS_ROTATION = [
-    ("🔍 Hunting internships...",       discord.ActivityType.watching),
-    ("📬 Checking 400+ career pages",   discord.ActivityType.watching),
-    ("💼 Finding your next role",       discord.ActivityType.playing),
-    ("🚀 Powered by PerTern",           discord.ActivityType.playing),
+    ("🔍 Hunting internships...",        discord.ActivityType.watching),
+    ("📬 Checking 427+ career pages",    discord.ActivityType.watching),
+    ("💼 Finding your next role",        discord.ActivityType.playing),
+    ("🚀 Powered by PerTern",            discord.ActivityType.playing),
     ("⚡ Scanning Greenhouse & Workday", discord.ActivityType.watching),
-    ("🎯 Matching jobs to your skills", discord.ActivityType.playing),
-    ("📡 Live on your Raspberry Pi",    discord.ActivityType.watching),
+    ("🎯 Matching jobs to your skills",  discord.ActivityType.playing),
     ("☕ Scanning so you don't have to", discord.ActivityType.playing),
-    ("🌐 410+ companies tracked",       discord.ActivityType.watching),
-    ("🔔 New match? You'll know first", discord.ActivityType.playing),
+    ("🌐 427+ companies tracked",        discord.ActivityType.watching),
+    ("🔔 New match? You'll know first",  discord.ActivityType.playing),
+    None,  # Pi stats slot — filled dynamically
 ]
 _status_index = 0
+
+
+def _pi_status_text() -> tuple[str, discord.ActivityType] | None:
+    """Return a live Pi stats status string, or None if unavailable."""
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp") as f:
+            temp = round(int(f.read().strip()) / 1000, 1)
+        try:
+            import psutil
+            cpu = psutil.cpu_percent(interval=0.2)
+            return (f"🍓 {temp}°C · CPU {cpu}%", discord.ActivityType.watching)
+        except Exception:
+            return (f"🍓 Running at {temp}°C", discord.ActivityType.watching)
+    except Exception:
+        return None
 
 
 @tasks.loop(seconds=30)
 async def status_rotation_loop():
     global _status_index
-    text, atype = _STATUS_ROTATION[_status_index % len(_STATUS_ROTATION)]
+    slot = _STATUS_ROTATION[_status_index % len(_STATUS_ROTATION)]
+    if slot is None:
+        slot = _pi_status_text() or ("📡 Live on your Raspberry Pi", discord.ActivityType.watching)
+    text, atype = slot
     await client.change_presence(
         status=discord.Status.online,
         activity=discord.Activity(type=atype, name=text),
