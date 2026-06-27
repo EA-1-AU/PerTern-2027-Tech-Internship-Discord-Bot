@@ -66,6 +66,18 @@ def fetch_greenhouse(company_slug):
         title = job.get("title", "")
         if not is_internship_title(title):
             continue
+        # Fetch full description from detail endpoint
+        desc = ""
+        try:
+            detail = requests.get(
+                f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs/{job.get('id')}",
+                headers=USER_AGENT, timeout=15,
+            )
+            if detail.ok:
+                html = detail.json().get("content", "")
+                desc = clean_text(BeautifulSoup(html, "html.parser").get_text(" "))[:1500]
+        except Exception:
+            pass
         jobs.append({
             "job_id": f"greenhouse:{company_slug}:{job.get('id')}",
             "company": company_slug,
@@ -73,7 +85,7 @@ def fetch_greenhouse(company_slug):
             "title": title,
             "location": (job.get("location") or {}).get("name", ""),
             "url": job.get("absolute_url", ""),
-            "description": "",
+            "description": desc,
         })
     return jobs
 
@@ -353,3 +365,93 @@ def fetch_oracle(company):
             "description": nearby[:1000],
         })
     return jobs
+
+
+def fetch_job_description(job: dict) -> str:
+    """
+    Fetch the full job description on-demand for a stored job.
+    Returns plain text (up to 2000 chars) or empty string on failure.
+    """
+    url    = job.get("url", "")
+    source = job.get("source", "").lower()
+
+    try:
+        # ── Greenhouse ────────────────────────────────────────────────────────
+        if source == "greenhouse" and "greenhouse.io" in url:
+            # job_id format: greenhouse:{slug}:{id}
+            parts = job.get("job_id", "").split(":")
+            if len(parts) == 3:
+                slug, jid = parts[1], parts[2]
+                r = requests.get(
+                    f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{jid}",
+                    headers=USER_AGENT, timeout=15,
+                )
+                if r.ok:
+                    html = r.json().get("content", "")
+                    return clean_text(BeautifulSoup(html, "html.parser").get_text(" "))[:2000]
+
+        # ── Lever ─────────────────────────────────────────────────────────────
+        elif source == "lever" and "lever.co" in url:
+            parts = job.get("job_id", "").split(":")
+            if len(parts) == 3:
+                slug, jid = parts[1], parts[2]
+                r = requests.get(
+                    f"https://api.lever.co/v0/postings/{slug}/{jid}",
+                    headers=USER_AGENT, timeout=15,
+                )
+                if r.ok:
+                    data = r.json()
+                    plain = data.get("descriptionPlain", "") or ""
+                    lists = data.get("lists", [])
+                    for lst in lists:
+                        plain += f"\n\n{lst.get('text','')}\n"
+                        plain += BeautifulSoup(lst.get("content",""), "html.parser").get_text("\n")
+                    return clean_text(plain)[:2000]
+
+        # ── Ashby ─────────────────────────────────────────────────────────────
+        elif source == "ashby" and "ashbyhq.com" in url:
+            parts = job.get("job_id", "").split(":")
+            if len(parts) == 3:
+                slug, jid = parts[1], parts[2]
+                r = requests.get(
+                    f"https://api.ashbyhq.com/posting-api/job-board/{slug}/published/{jid}",
+                    headers=USER_AGENT, timeout=15,
+                )
+                if r.ok:
+                    data = r.json()
+                    html = data.get("descriptionHtml", "") or data.get("description", "")
+                    plain = data.get("descriptionPlain", "")
+                    text = plain or clean_text(BeautifulSoup(html, "html.parser").get_text(" "))
+                    return text[:2000]
+
+        # ── Workday ───────────────────────────────────────────────────────────
+        elif source == "workday" and "myworkdayjobs.com" in url:
+            parsed   = urlparse(url)
+            domain   = parsed.netloc
+            tenant   = domain.split(".")[0]
+            path     = parsed.path   # /board/job/Location/Title_ID
+            parts    = path.strip("/").split("/")
+            if len(parts) >= 2:
+                board = parts[0]
+                job_path = "/" + "/".join(parts[1:])  # /job/Location/Title_ID
+                api_url  = f"https://{domain}/wday/cxs/{tenant}/{board}{job_path}"
+                r = requests.get(api_url, headers={**USER_AGENT, "Accept": "application/json"}, timeout=15)
+                if r.ok:
+                    data = r.json()
+                    desc = data.get("jobPostingInfo", {}).get("jobDescription", "")
+                    if desc:
+                        return clean_text(BeautifulSoup(desc, "html.parser").get_text(" "))[:2000]
+
+        # ── Generic fallback: scrape the page ────────────────────────────────
+        if url:
+            r = requests.get(url, headers=USER_AGENT, timeout=20)
+            if r.ok and "text/html" in r.headers.get("Content-Type", ""):
+                soup = BeautifulSoup(r.text, "html.parser")
+                for tag in soup(["script", "style", "nav", "header", "footer"]):
+                    tag.decompose()
+                return clean_text(soup.get_text(" "))[:2000]
+
+    except Exception:
+        pass
+
+    return ""

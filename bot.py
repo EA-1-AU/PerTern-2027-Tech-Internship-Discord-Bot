@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 
 import db
 from scraper import run_all_scrapers
+from scraper.ats import fetch_job_description
 from tagging import tag_job
 
 load_dotenv()
@@ -473,6 +474,26 @@ class BrowseView(discord.ui.View):
             await interaction.response.send_message(url, ephemeral=False)
         else:
             await interaction.response.send_message("No URL available for this listing.", ephemeral=True)
+
+    @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=1)
+    async def details_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True)
+        loop = asyncio.get_event_loop()
+        job  = self.job
+        desc = await loop.run_in_executor(None, lambda: fetch_job_description(job))
+        if not desc:
+            # Fall back to stored description
+            desc = job.get("description", "")
+        if not desc:
+            await interaction.followup.send("No description available for this listing.", ephemeral=True)
+            return
+        em = discord.Embed(
+            title=f"📄 {job.get('title','')} — {job.get('company','')}",
+            description=desc[:4000],
+            color=discord.Color.from_rgb(88, 101, 242),
+            url=job.get("url") or None,
+        )
+        await interaction.followup.send(embed=em)
 
 
 # ── Category select dropdown ──────────────────────────────────────────────────
