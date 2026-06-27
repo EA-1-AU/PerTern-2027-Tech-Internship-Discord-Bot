@@ -65,7 +65,7 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 | `/check` | Trigger a manual scan immediately |
 | `/status` | Bot health — scan stats, job counts, company error report, and live Pi hardware stats (CPU temp, RAM, disk, uptime) |
 | `/version` | Current version, last scan time, new jobs found, and bot uptime |
-| `/log` | Last 50 log lines + full company error/deactivation report as CSV attachments |
+| `/log` | Downloads a single report file — last 50 log lines and the full company error/deactivation table combined |
 | `/clear-dm` | Delete all bot messages from your DMs for a clean slate |
 
 ---
@@ -198,8 +198,6 @@ PerTern/
 | HTTP scraping | requests + BeautifulSoup |
 | Concurrency | asyncio + ThreadPoolExecutor |
 | Deployment | systemd on Raspberry Pi |
-
----
 
 ---
 
