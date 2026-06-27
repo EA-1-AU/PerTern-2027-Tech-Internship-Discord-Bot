@@ -203,6 +203,50 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+_FORTUNE_100 = {
+    "Walmart", "Amazon", "Apple", "UnitedHealth Group", "CVS Health",
+    "JPMorgan Chase", "ExxonMobil", "Google", "Cigna", "AT&T",
+    "Ford", "Elevance Health", "Microsoft", "Home Depot", "Comcast",
+    "General Motors", "Humana", "Pfizer", "Lowe's", "Target",
+    "Johnson & Johnson", "MetLife", "Wells Fargo", "Boeing", "Verizon",
+    "Procter & Gamble", "Delta Air Lines", "Goldman Sachs", "Raytheon",
+    "Lockheed Martin", "Cisco", "IBM", "Best Buy", "Disney",
+    "Warner Bros Discovery", "Northrop Grumman", "Bank of America",
+    "Prudential", "Intel", "Caterpillar", "Thermo Fisher",
+    "Bristol-Myers Squibb", "Nationwide", "Merck", "UPS", "Broadcom",
+    "Charter Communications", "Morgan Stanley", "Allstate", "Abbott",
+    "Liberty Mutual", "John Deere", "Accenture", "HPE", "Qualcomm",
+    "PayPal", "Travelers", "Dell Technologies", "Dell", "Southwest Airlines",
+    "Eli Lilly", "Honeywell", "Coca-Cola", "General Dynamics",
+    "General Dynamics Mission Systems", "General Dynamics IT",
+    "Salesforce", "Deloitte", "KPMG", "EY", "PwC",
+    "American Express", "Charles Schwab", "BlackRock", "State Street",
+    "Mastercard", "Visa", "T-Mobile", "3M", "Eaton", "Parker Hannifin",
+    "Cummins", "Medtronic", "Stryker", "Boston Scientific",
+    "L3Harris", "BAE Systems", "Leidos", "Booz Allen Hamilton",
+    "SAIC", "Textron", "S&P Global", "Marsh McLennan", "Aon",
+    "Travelers", "FIS", "Fiserv", "UPS", "Lumen Technologies",
+}
+
+
+def _db_fortune100_jobs() -> list[dict]:
+    """Return unreviewed jobs from Fortune 100 companies."""
+    uid  = str(MY_USER_ID)
+    names = list(_FORTUNE_100)
+    placeholders = ",".join("?" * len(names))
+    with sqlite3.connect(str(db.DB_PATH)) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(f"""
+            SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
+            LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
+            LEFT JOIN companies c ON j.company = c.name
+            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
+            AND j.company IN ({placeholders})
+            ORDER BY co_priority DESC, j.first_seen DESC
+        """, [uid] + names).fetchall()
+    return [dict(r) for r in rows]
+
+
 def _db_total_unreviewed() -> int:
     uid = str(MY_USER_ID)
     with sqlite3.connect(str(db.DB_PATH)) as conn:
@@ -1003,6 +1047,34 @@ async def slash_summary(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     await _update_summary()
     await interaction.followup.send("Summary refreshed!", ephemeral=True)
+
+
+@tree.command(name="fortune-100", description="Browse unreviewed internships from Fortune 100 companies")
+async def slash_fortune100(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    jobs = _db_fortune100_jobs()
+    if not jobs:
+        await interaction.response.send_message(
+            "No unreviewed Fortune 100 internships right now.", ephemeral=True
+        )
+        return
+
+    _browse["jobs"]     = jobs
+    _browse["index"]    = 0
+    _browse["category"] = None
+
+    uid    = str(MY_USER_ID)
+    job    = jobs[0]
+    uj     = db.get_user_job(uid, job.get("job_id", ""))
+    status = (uj or {}).get("status", "")
+    em     = _make_job_embed(job, index=0, total=len(jobs), status=status)
+    em.description = f"🏆 Fortune 100 — {len(jobs)} unreviewed internships\nUse ◀ ▶ to navigate · Applied/Skip to mark"
+
+    view = BrowseView(job)
+    await interaction.response.send_message(embed=em, view=view, ephemeral=True)
+    view.message = await interaction.original_response()
 
 
 def _pi_stats() -> dict:

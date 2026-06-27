@@ -58,6 +58,7 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 | Command | What it does |
 |---|---|
 | `/summary` | Summary of all unreviewed internships by category with a browse dropdown |
+| `/fortune-100` | Browse unreviewed internships from Fortune 100 companies only |
 | `/pipeline` | Full application funnel with company names — applied, interviews, offers |
 | `/stats` | Application pipeline stats — counts by status and response rate |
 | `/find <query>` | Search indexed jobs by keyword or company name |
