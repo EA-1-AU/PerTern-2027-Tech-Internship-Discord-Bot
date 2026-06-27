@@ -253,7 +253,8 @@ _TITLE_BLACKLIST_RE = re.compile(
     r'\b(pharmac(y|ist|eutical|ology)|dispensing|compounding|'
     r'dental|dentist|optometr|ophthalmolog|veterinar|'
     r'nursing|nurse|clinical\s+trial|radiology|radiograph|'
-    r'medical\s+assistant|phlebotom|surgical|anesthes)\b',
+    r'medical\s+assistant|phlebotom|surgical|anesthes|'
+    r'ph\.?d|doctoral|postdoc)\b',
     re.IGNORECASE,
 )
 
@@ -1025,6 +1026,20 @@ async def on_ready():
 
     try:
         dm = await _get_dm()
+
+        # Clear all previous bot messages so the DM starts fresh
+        deleted = 0
+        async for msg in dm.history(limit=500):
+            if msg.author.id == client.user.id:
+                try:
+                    await msg.delete()
+                    await asyncio.sleep(0.4)
+                    deleted += 1
+                except Exception as del_err:
+                    log.warning("Failed to delete msg %s: %s", msg.id, del_err)
+        log.info("Startup DM clear: deleted %d messages", deleted)
+        db.set_bot_state(_SUMMARY_MSG_KEY, "")
+
         await dm.send(embed=discord.Embed(
             title="✅ PerTern Online",
             description=(
@@ -1033,12 +1048,12 @@ async def on_ready():
                 f"Weekly stats every **Sunday**.\n\n"
                 f"**{db.get_job_count():,}** internships already indexed.\n\n"
                 f"Commands: `/check` `/summary` `/stats` `/status`\n"
-                f"`/find <keyword>` `/export` `/clear-dm`"
+                f"`/find <keyword>` `/export` `/pipeline` `/clear-dm`"
             ),
             color=discord.Color.green(),
             timestamp=datetime.datetime.now(timezone.utc),
         ))
-        # Post/refresh the summary on startup
+        # Post fresh summary
         await _update_summary()
     except Exception as e:
         log.warning("Startup DM failed: %s", e)
