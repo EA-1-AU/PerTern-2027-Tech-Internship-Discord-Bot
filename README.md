@@ -31,7 +31,7 @@ PerTern scrapes **427+ company career pages** every 10 minutes, filters for inte
 - **2027 filter** — only surfaces Spring, Summer, and Fall 2027 internships; drops 2026 and undated listings
 - **Auto-deadline detection** — scans job descriptions for deadline phrases and flags them with ⏰; embed turns orange (⚠️) if ≤7 days away, red (🚨) if ≤3 days
 - **Smart location** — if the scraper returns a generic location, the title is parsed to extract the real city/state or Remote/Hybrid status
-- **Rotating bot status** — 10 cycling presence messages so the bot feels alive
+- **Rotating bot status** — cycling presence messages including live Raspberry Pi temperature and CPU usage
 - **Startup confirmation** — DMs you when the bot comes online
 
 ---
@@ -51,7 +51,7 @@ Tap **••• More** to expand:
 🔗 Copy Link  |  ⭐ Priority  |  📄 Details
 ```
 
-The browse session **auto-deletes after 3 minutes** of inactivity to keep your DMs clean.
+The browse session **auto-deletes after 3 minutes** of inactivity to keep your DMs clean. The summary embed **updates automatically** after every job you review so your counts stay current.
 
 ### Commands
 
@@ -63,7 +63,7 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 | `/find <query>` | Search indexed jobs by keyword or company name |
 | `/export` | DM a CSV of all applied, interview, and offer jobs |
 | `/check` | Trigger a manual scan immediately |
-| `/status` | Bot health — scan stats, job counts, company error report |
+| `/status` | Bot health — scan stats, job counts, company error report, and live Pi hardware stats (CPU temp, RAM, disk, uptime) |
 | `/deactivated` | Export a CSV of deactivated and erroring companies |
 | `/clear-dm` | Delete all bot messages from your DMs for a clean slate |
 
