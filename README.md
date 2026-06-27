@@ -1,7 +1,6 @@
-<!-- Add your banner image to the repo root as Banner.png, then replace the line below -->
-<!-- <div align="center">
+<div align="center">
   <img src="https://raw.githubusercontent.com/EA-1-AU/PerTern/master/Banner.png" alt="PerTern Banner" width="100%"/>
-</div> -->
+</div>
 
 <br/>
 
