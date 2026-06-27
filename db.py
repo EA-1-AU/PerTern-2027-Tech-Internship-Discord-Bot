@@ -204,6 +204,16 @@ def get_all_active_companies():
         return [dict(r) for r in cur.fetchall()]
 
 
+def toggle_company_priority(company_name: str) -> int:
+    """Toggle priority for a company by name. Returns new priority value (0 or 1)."""
+    with db_cursor(commit=True) as cur:
+        cur.execute("SELECT priority FROM companies WHERE LOWER(name)=LOWER(?)", (company_name,))
+        row = cur.fetchone()
+        new = 0 if (row and row[0]) else 1
+        cur.execute("UPDATE companies SET priority=? WHERE LOWER(name)=LOWER(?)", (new, company_name))
+        return new
+
+
 def record_company_failure(name, source):
     with db_cursor(commit=True) as cur:
         cur.execute(

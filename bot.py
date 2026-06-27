@@ -508,6 +508,16 @@ class BrowseView(discord.ui.View):
     async def rejected_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._mark_direct(interaction, "rejected")
 
+    @discord.ui.button(label="⭐ Priority", style=discord.ButtonStyle.secondary, row=2)
+    async def priority_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        company = self.job.get("company", "")
+        new_val = db.toggle_company_priority(company)
+        label = "on" if new_val else "off"
+        await interaction.response.send_message(
+            f"⭐ **{company}** priority **{label}** — new jobs from this company will {'appear first' if new_val else 'sort normally'}.",
+            ephemeral=True,
+        )
+
     @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=2)
     async def details_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True)
