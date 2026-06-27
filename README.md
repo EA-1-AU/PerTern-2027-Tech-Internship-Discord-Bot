@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/EA-1-AU/PerTern/master/Banner.png" alt="PerTern Banner" width="100%"/>
+  <img src="https://raw.githubusercontent.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot/master/Banner.png" alt="PerTern Banner" width="100%"/>
 </div>
 
 <br/>
@@ -12,7 +12,7 @@
 
 PerTern scrapes **427+ company career pages** every 10 minutes, filters for internships that match your background, and sends each new match directly to you via Discord DM. No server. No channels. Just you.
 
-[![Version](https://img.shields.io/badge/version-1.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern)
+[![Version](https://img.shields.io/badge/version-1.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![discord.py](https://img.shields.io/badge/discord.py-2.x-5865F2?style=flat&logo=discord&logoColor=white)](https://discordpy.readthedocs.io/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org)
@@ -104,7 +104,7 @@ Keyword matching includes: `cybersecurity`, `network security`, `cloud security`
 
 ```bash
 git clone https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot.git
-cd PerTern
+cd PerTern-2027-Tech-Internship-Discord-Bot
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
