@@ -29,10 +29,15 @@ from tagging import tag_job
 
 load_dotenv()
 
+_LOG_PATH = os.path.join(os.path.dirname(__file__), "pertern.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(message)s",
-    datefmt="%H:%M:%S",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler(_LOG_PATH, encoding="utf-8"),
+    ],
 )
 log = logging.getLogger("pertern")
 
@@ -943,6 +948,33 @@ def _owner_only(interaction: discord.Interaction) -> bool:
     return interaction.user.id == MY_USER_ID
 
 
+_VERSION = "1.0"
+
+
+@tree.command(name="version", description="Show PerTern version and last scan info")
+async def slash_version(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    last_scan  = db.get_bot_state("last_scan_time") or "Never"
+    last_count = db.get_bot_state("last_scan_new")  or "0"
+    uptime_sec = (datetime.datetime.now(timezone.utc) - client.launch_time).total_seconds() if hasattr(client, "launch_time") else None
+    uptime_str = ""
+    if uptime_sec is not None:
+        h, rem = divmod(int(uptime_sec), 3600)
+        m, s   = divmod(rem, 60)
+        uptime_str = f"{h}h {m}m {s}s"
+
+    em = discord.Embed(title="PerTern", color=discord.Color.blurple())
+    em.add_field(name="Version",    value=f"`v{_VERSION}`",  inline=True)
+    em.add_field(name="Last Scan",  value=last_scan,         inline=True)
+    em.add_field(name="New Jobs",   value=last_count,        inline=True)
+    if uptime_str:
+        em.add_field(name="Uptime", value=uptime_str,        inline=True)
+    em.add_field(name="Log",        value=f"`{_LOG_PATH}`",  inline=False)
+    await interaction.response.send_message(embed=em, ephemeral=True)
+
+
 @tree.command(name="check", description="Trigger a manual scan right now")
 async def slash_check(interaction: discord.Interaction):
     if not _owner_only(interaction):
@@ -1188,28 +1220,40 @@ async def slash_export(interaction: discord.Interaction):
     await interaction.followup.send("Export sent to your DMs!", ephemeral=True)
 
 
-@tree.command(name="deactivated", description="Export deactivated and erroring companies to CSV")
-async def slash_deactivated(interaction: discord.Interaction):
+@tree.command(name="log", description="Recent bot logs + full company error report as CSV")
+async def slash_log(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.defer(ephemeral=True)
 
     import csv, io, sqlite3 as _sq
+
+    # ── Recent log lines ──────────────────────────────────────────────────────
+    log_snippet = ""
+    try:
+        with open(_LOG_PATH, encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        tail = lines[-50:] if len(lines) > 50 else lines
+        # keep WARNING+ lines plus the last 20 INFO lines for context
+        important = [l for l in tail if "WARNING" in l or "ERROR" in l or "CRITICAL" in l]
+        recent    = lines[-20:] if len(lines) >= 20 else lines
+        combined  = list(dict.fromkeys(recent + important))  # preserve order, dedupe
+        log_snippet = "".join(combined[-50:])
+    except FileNotFoundError:
+        log_snippet = "(log file not found — bot may not have written any logs yet)\n"
+
+    # ── Company issues CSV ────────────────────────────────────────────────────
     with _sq.connect(db.DB_PATH) as con:
         con.row_factory = _sq.Row
-        deactivated = con.execute(
+        companies = con.execute(
             "SELECT name, source, url, slug, fail_count, active FROM companies "
             "WHERE active=0 OR fail_count>0 ORDER BY active ASC, fail_count DESC, name ASC"
         ).fetchall()
 
-    if not deactivated:
-        await interaction.followup.send("No deactivated or erroring companies.", ephemeral=True)
-        return
-
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=["company", "source", "status", "fail_count", "reason", "url", "slug"])
+    csv_buf = io.StringIO()
+    writer  = csv.DictWriter(csv_buf, fieldnames=["company", "source", "status", "fail_count", "reason", "url", "slug"])
     writer.writeheader()
-    for r in deactivated:
+    for r in companies:
         active     = r["active"]
         fail_count = r["fail_count"]
         if active == 0 and fail_count >= 3:
@@ -1220,7 +1264,7 @@ async def slash_deactivated(interaction: discord.Interaction):
             reason = "Manually deactivated or removed from CSV"
         else:
             status = "Erroring"
-            reason = f"{fail_count} consecutive scrape failure(s) — not yet deactivated"
+            reason = f"{fail_count} scrape failure(s) — not yet deactivated"
         writer.writerow({
             "company":    r["name"],
             "source":     r["source"],
@@ -1231,13 +1275,18 @@ async def slash_deactivated(interaction: discord.Interaction):
             "slug":       r["slug"] or "",
         })
 
-    buf.seek(0)
-    fname = f"pertern_deactivated_{datetime.datetime.now().strftime('%Y%m%d')}.csv"
-    await interaction.followup.send(
-        content=f"📎 **{len(deactivated)} companies** with issues",
-        file=discord.File(fp=io.BytesIO(buf.getvalue().encode()), filename=fname),
-        ephemeral=True,
-    )
+    csv_buf.seek(0)
+    today    = datetime.datetime.now().strftime("%Y%m%d")
+    csv_name = f"pertern_companies_{today}.csv"
+    log_name = f"pertern_log_{today}.txt"
+
+    files = [discord.File(fp=io.BytesIO(csv_buf.getvalue().encode()), filename=csv_name)]
+    if log_snippet:
+        files.append(discord.File(fp=io.BytesIO(log_snippet.encode()), filename=log_name))
+
+    issue_count = len(companies)
+    summary = f"📋 **{issue_count} companies** with issues  ·  last 50 log lines attached"
+    await interaction.followup.send(content=summary, files=files, ephemeral=True)
 
 
 @tree.command(name="pipeline", description="See your full application funnel with company names")
@@ -1310,6 +1359,7 @@ async def slash_clear_dm(interaction: discord.Interaction):
 
 @client.event
 async def on_ready():
+    client.launch_time = datetime.datetime.now(timezone.utc)
     log.info("PerTern online as %s", client.user)
     if not MY_USER_ID:
         log.error("MY_DISCORD_USER_ID not set!"); return

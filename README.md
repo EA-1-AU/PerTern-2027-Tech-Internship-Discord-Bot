@@ -64,7 +64,8 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 | `/export` | DM a CSV of all applied, interview, and offer jobs |
 | `/check` | Trigger a manual scan immediately |
 | `/status` | Bot health — scan stats, job counts, company error report, and live Pi hardware stats (CPU temp, RAM, disk, uptime) |
-| `/deactivated` | Export a CSV of deactivated and erroring companies |
+| `/version` | Current version, last scan time, new jobs found, and bot uptime |
+| `/log` | Last 50 log lines + full company error/deactivation report as CSV attachments |
 | `/clear-dm` | Delete all bot messages from your DMs for a clean slate |
 
 ---
