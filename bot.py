@@ -663,6 +663,11 @@ async def _run_scan(label: str = "") -> int:
     count = len(new_jobs)
     log.info("Scan done — %d new matches", count)
 
+    # Record scan time for /status
+    now_str = datetime.datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    db.set_bot_state("last_scan_time", now_str)
+    db.set_bot_state("last_scan_new", str(count))
+
     # Always update the summary (edit new count in, or just refresh totals)
     try:
         await _update_summary(new_count=count)
@@ -875,14 +880,33 @@ async def slash_summary(interaction: discord.Interaction):
 async def slash_status(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    last_scan = db.get_bot_state("last_scan_time") or "Never"
+    last_count = db.get_bot_state("last_scan_new") or "0"
+
+    # Companies with failures
+    import sqlite3 as _sq
+    with _sq.connect(db.DB_PATH) as con:
+        con.row_factory = _sq.Row
+        errored = con.execute(
+            "SELECT name, fail_count FROM companies WHERE fail_count > 0 AND active=1 ORDER BY fail_count DESC LIMIT 5"
+        ).fetchall()
+        deactivated = con.execute(
+            "SELECT COUNT(*) FROM companies WHERE active=0"
+        ).fetchone()[0]
+
+    err_lines = "\n".join(f"  • {r['name']} ({r['fail_count']} fails)" for r in errored) or "  None"
+
     em = discord.Embed(
         title="⚙️ PerTern Status",
         description=(
             f"**Jobs indexed:** {db.get_job_count():,}\n"
             f"**Unreviewed:** {_db_total_unreviewed():,}\n"
+            f"**Last scan:** {last_scan} (+{last_count} new)\n"
             f"**Scan interval:** every {SCAN_INTERVAL} minutes\n"
             f"**Daily digest:** {DIGEST_HOUR}:00 UTC (~8am ET)\n"
-            f"**Salary filter:** {'On' if REQUIRE_SALARY else 'Off'}\n"
+            f"**Deactivated companies:** {deactivated}\n\n"
+            f"**Companies with errors:**\n{err_lines}"
         ),
         color=discord.Color.green(),
         timestamp=datetime.datetime.now(timezone.utc),
