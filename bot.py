@@ -392,10 +392,16 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
     if next_idx >= len(jobs):
         em = discord.Embed(
             title="✅ All done!",
-            description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.",
+            description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.\n\n*This message will disappear in 3 minutes.*",
             color=discord.Color.green(),
         )
         await interaction.response.edit_message(embed=em, view=None)
+        msg = await interaction.original_response()
+        await asyncio.sleep(180)
+        try:
+            await msg.delete()
+        except Exception:
+            pass
     else:
         _browse["index"] = next_idx
         job    = jobs[next_idx]
@@ -467,11 +473,11 @@ class BrowseView(discord.ui.View):
     async def snooze_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SnoozeModal(self.job))
 
-    @discord.ui.button(label="🔗 Link", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="🔗 Copy Link", style=discord.ButtonStyle.secondary, row=1)
     async def link_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         url = self.job.get("url", "")
         if url:
-            await interaction.response.send_message(url, ephemeral=False)
+            await interaction.response.send_message(f"🔗 **Apply link** (tap to open or hold to copy):\n{url}", ephemeral=True)
         else:
             await interaction.response.send_message("No URL available for this listing.", ephemeral=True)
 
