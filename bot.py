@@ -392,12 +392,12 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
     if next_idx >= len(jobs):
         em = discord.Embed(
             title="✅ All done!",
-            description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.\n\n*This message will disappear in 3 minutes.*",
+            description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.\n\n*This message will disappear in 1 minute.*",
             color=discord.Color.green(),
         )
         await interaction.response.edit_message(embed=em, view=None)
         msg = await interaction.original_response()
-        await asyncio.sleep(180)
+        await asyncio.sleep(60)
         try:
             await msg.delete()
         except Exception:
