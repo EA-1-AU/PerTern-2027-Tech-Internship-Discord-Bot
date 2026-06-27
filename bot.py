@@ -1172,6 +1172,33 @@ async def on_ready():
     weekly_stats_loop.start()
     snooze_check_loop.start()
     followup_reminder_loop.start()
+    status_rotation_loop.start()
+
+
+_STATUS_ROTATION = [
+    ("🔍 Hunting internships...",       discord.ActivityType.watching),
+    ("📬 Checking 400+ career pages",   discord.ActivityType.watching),
+    ("💼 Finding your next role",       discord.ActivityType.playing),
+    ("🚀 Powered by PerTern",           discord.ActivityType.playing),
+    ("⚡ Scanning Greenhouse & Workday", discord.ActivityType.watching),
+    ("🎯 Matching jobs to your skills", discord.ActivityType.playing),
+    ("📡 Live on your Raspberry Pi",    discord.ActivityType.watching),
+    ("☕ Scanning so you don't have to", discord.ActivityType.playing),
+    ("🌐 410+ companies tracked",       discord.ActivityType.watching),
+    ("🔔 New match? You'll know first", discord.ActivityType.playing),
+]
+_status_index = 0
+
+
+@tasks.loop(seconds=30)
+async def status_rotation_loop():
+    global _status_index
+    text, atype = _STATUS_ROTATION[_status_index % len(_STATUS_ROTATION)]
+    await client.change_presence(
+        status=discord.Status.online,
+        activity=discord.Activity(type=atype, name=text),
+    )
+    _status_index += 1
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
