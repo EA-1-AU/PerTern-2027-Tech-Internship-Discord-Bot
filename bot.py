@@ -135,6 +135,14 @@ client = discord.Client(intents=intents)
 tree   = discord.app_commands.CommandTree(client)
 
 _seen_job_ids: set[str] = set()
+_seen_title_keys: set[str] = set()  # dedupe by company+normalized-title
+
+
+def _title_key(company: str, title: str) -> str:
+    """Normalize company+title for duplicate detection."""
+    t = re.sub(r'[^a-z0-9]', '', title.lower())
+    c = re.sub(r'[^a-z0-9]', '', company.lower())
+    return f"{c}:{t}"
 
 # Persistent summary message ID (saved to DB so it survives restarts)
 _SUMMARY_MSG_KEY = "pertern_summary_msg_id"
@@ -208,6 +216,9 @@ def _is_us_location(location: str) -> bool:
     if not location or location.strip() == "":
         return True
     loc = f" {location.lower()} "
+    # Accept remote anywhere + any US location; reject everything else
+    if any(w in loc for w in ("remote", "anywhere", "nationwide", "hybrid", "virtual")):
+        return True
     return any(ind in loc for ind in _US_INDICATORS)
 
 
@@ -382,7 +393,7 @@ class SnoozeModal(discord.ui.Modal, title="Snooze this job"):
 
 # ── Browse helpers ────────────────────────────────────────────────────────────
 
-_REVIEWED = {"applied", "skipped", "snoozed", "interview", "offer"}
+_REVIEWED = {"applied", "skipped", "snoozed", "interview", "offer", "rejected"}
 
 
 async def _advance_after_mark(interaction: discord.Interaction, marked_status: str):
@@ -491,7 +502,11 @@ class BrowseView(discord.ui.View):
         else:
             await interaction.response.send_message("No URL available for this listing.", ephemeral=True)
 
-    @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="❌ Rejected", style=discord.ButtonStyle.danger, row=1)
+    async def rejected_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark_direct(interaction, "rejected")
+
+    @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=2)
     async def details_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True)
         loop = asyncio.get_event_loop()
@@ -622,6 +637,11 @@ async def _run_scan(label: str = "") -> int:
             if db.job_exists(jid):
                 _seen_job_ids.add(jid)
                 continue
+            # Dedupe by company+title (catches same role across multiple ATS sources)
+            tkey = _title_key(job.get("company",""), job.get("title",""))
+            if tkey in _seen_title_keys:
+                continue
+            _seen_title_keys.add(tkey)
             _seen_job_ids.add(jid)
             db.insert_job(
                 jid,
@@ -778,10 +798,38 @@ async def snooze_check_loop():
         log.exception("Snooze check error")
 
 
+@tasks.loop(hours=12)
+async def followup_reminder_loop():
+    """DM a follow-up nudge for jobs applied 14+ days ago with no status change."""
+    try:
+        uid   = str(MY_USER_ID)
+        stale = db.get_stale_user_applied_jobs(uid, days=14)
+        dm    = await _get_dm()
+        for job in stale:
+            key = f"followup_{job.get('job_id','')}"
+            if db.get_bot_state(key):
+                continue
+            db.set_bot_state(key, "1")
+            em = discord.Embed(
+                title="📬 Time to follow up!",
+                description=(
+                    f"**{job.get('title')}** at **{job.get('company')}**\n"
+                    f"You applied **14+ days ago** and haven't heard back.\n"
+                    f"Consider sending a follow-up email!"
+                ),
+                color=discord.Color.orange(),
+                url=job.get("url") or None,
+            )
+            await dm.send(embed=em)
+    except Exception:
+        log.exception("Follow-up reminder error")
+
+
 @scan_loop.before_loop
 @daily_digest_loop.before_loop
 @weekly_stats_loop.before_loop
 @snooze_check_loop.before_loop
+@followup_reminder_loop.before_loop
 async def before_loops():
     await client.wait_until_ready()
 
@@ -894,6 +942,45 @@ async def slash_export(interaction: discord.Interaction):
     await interaction.followup.send("Export sent to your DMs!", ephemeral=True)
 
 
+@tree.command(name="pipeline", description="See your full application funnel with company names")
+async def slash_pipeline(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    uid = str(MY_USER_ID)
+
+    def _jobs_list(status: str, limit: int = 20) -> list[dict]:
+        return db.get_user_jobs_by_status(uid, status, limit=limit)
+
+    applied    = _jobs_list("applied")
+    interviews = _jobs_list("interview")
+    offers     = _jobs_list("offer")
+    rejected   = _jobs_list("rejected")
+
+    def _fmt(jobs: list[dict]) -> str:
+        if not jobs: return "_None yet_"
+        return "\n".join(f"• {j.get('company','')} — {j.get('title','')}" for j in jobs[:10])
+
+    em = discord.Embed(
+        title="📊 Your Application Pipeline",
+        color=discord.Color.from_rgb(88, 101, 242),
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+    em.add_field(name=f"✅ Applied ({len(applied)})",      value=_fmt(applied),    inline=False)
+    em.add_field(name=f"🗣️ Interview ({len(interviews)})", value=_fmt(interviews), inline=False)
+    em.add_field(name=f"🎉 Offer ({len(offers)})",         value=_fmt(offers),     inline=False)
+    em.add_field(name=f"❌ Rejected ({len(rejected)})",    value=_fmt(rejected),   inline=False)
+
+    if offers:
+        em.set_footer(text="🎉 You have offers — congrats!")
+    elif interviews:
+        em.set_footer(text="🗣️ Keep going — you're in interviews!")
+    else:
+        em.set_footer(text="Keep applying — it's a numbers game!")
+
+    await interaction.followup.send(embed=em, ephemeral=True)
+
+
 @tree.command(name="clear-dm", description="Delete all bot messages from your DMs (clean slate)")
 async def slash_clear_dm(interaction: discord.Interaction):
     if not _owner_only(interaction):
@@ -960,6 +1047,7 @@ async def on_ready():
     daily_digest_loop.start()
     weekly_stats_loop.start()
     snooze_check_loop.start()
+    followup_reminder_loop.start()
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
