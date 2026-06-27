@@ -324,95 +324,83 @@ Oracle,oracle,,https://careers.oracle.com/jobs/#en/sites/jobsearch/requisitions?
 Ford,oracle,,https://efds.fa.em5.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/requisitions?keyword=intern
 PepsiCo,oracle,,https://pepsicojobs.com/main/jobs?keywords=intern
 Deloitte,oracle,,https://apply.deloitte.com/careers/SearchJobs/intern
-SentinelOne,greenhouse,sentinelone,
-Wiz,greenhouse,wiz,
-Snyk,greenhouse,snyk,
+SentinelOne,workday,,https://sentinelone.wd5.myworkdayjobs.com/External
+Wiz,workday,,https://wiz.wd3.myworkdayjobs.com/Wiz_External
+Snyk,workday,,https://snyk.wd1.myworkdayjobs.com/SnykCareers
 Abnormal Security,greenhouse,abnormalsecurity,
 Recorded Future,greenhouse,recordedfuture,
-Varonis,greenhouse,varonis,
-Lacework,greenhouse,lacework,
-HashiCorp,greenhouse,hashicorp,
+Varonis,workday,,https://varonis.wd1.myworkdayjobs.com/External
 New Relic,greenhouse,newrelic,
-Grafana Labs,greenhouse,grafana-labs,
-Arctic Wolf,greenhouse,arcticwolf,
+Grafana Labs,ashby,grafana-labs,
+Arctic Wolf,workday,,https://arcticwolf.wd1.myworkdayjobs.com/External
 Axonius,greenhouse,axonius,
-Orca Security,greenhouse,orca-security,
+Orca Security,greenhouse,orcasecurity,
 Cribl,greenhouse,cribl,
 Torq,greenhouse,torq,
-Island,greenhouse,island,
-Armis,greenhouse,armis,
-Illumio,greenhouse,illumio,
-Vectra AI,greenhouse,vectra,
+Island,ashby,island,
+Armis,workday,,https://armis.wd1.myworkdayjobs.com/External
+Illumio,workday,,https://illumio.wd1.myworkdayjobs.com/External
+Vectra AI,workday,,https://vectra.wd1.myworkdayjobs.com/External
 Cybereason,greenhouse,cybereason,
-DataStax,greenhouse,datastax,
 Monte Carlo,ashby,montecarlodata,
-Metabase,ashby,metabase,
 Dynatrace,workday,,https://dynatrace.wd3.myworkdayjobs.com/Dynatrace_Careers
 Alteryx,workday,,https://alteryx.wd1.myworkdayjobs.com/AlteryxCareers
 Check Point,workday,,https://checkpoint.wd5.myworkdayjobs.com/CheckPointCareers
-Trend Micro,workday,,https://trendmicro.wd3.myworkdayjobs.com/trendmicrocareers
-Secureworks,workday,,https://secureworks.wd1.myworkdayjobs.com/External
+Trend Micro,workday,,https://trendmicro.wd3.myworkdayjobs.com/External
 DXC Technology,workday,,https://dxc.wd3.myworkdayjobs.com/DXC_External_Careers
 Guidehouse,workday,,https://guidehouse.wd1.myworkdayjobs.com/External
-Peraton,workday,,https://peraton.wd1.myworkdayjobs.com/External
 CISA,custom,,https://www.cisa.gov/careers
 NSA,custom,,https://www.intelligencecareers.gov/nsa
 PwC,workday,,https://pwc.wd3.myworkdayjobs.com/Global_Campus_Careers
 Splunk,workday,,https://splunk.wd5.myworkdayjobs.com/External_Splunk
 MicroStrategy,workday,,https://microstrategy.wd1.myworkdayjobs.com/External
 Qlik,workday,,https://qlik.wd1.myworkdayjobs.com/Qlik_Careers
-ThoughtSpot,greenhouse,thoughtspot,
+ThoughtSpot,workday,,https://thoughtspot.wd5.myworkdayjobs.com/External
 Domo,workday,,https://domo.wd1.myworkdayjobs.com/Domo_Careers
 Trellix,workday,,https://trellix.wd5.myworkdayjobs.com/External
-HackerOne,greenhouse,hackerone,
+HackerOne,workday,,https://hackerone.wd5.myworkdayjobs.com/External
 Bugcrowd,greenhouse,bugcrowd,
-Razer,greenhouse,razer,
-Corsair,greenhouse,corsair,
-Logitech,workday,,https://logitech.wd5.myworkdayjobs.com/LogitechExternal
-SteelSeries,greenhouse,steelseries,
-MSI,greenhouse,msigaming,
-Square Enix,greenhouse,squareenix,
-Sega,greenhouse,sega,
-Capcom,greenhouse,capcomus,
-Gearbox Software,greenhouse,gearboxsoftware,
-Paradox Interactive,greenhouse,paradoxinteractive,
+Razer,workday,,https://razer.wd3.myworkdayjobs.com/Careers
+Corsair,workday,,https://corsair.wd1.myworkdayjobs.com/External
+Logitech,workday,,https://logitech.wd5.myworkdayjobs.com/External
+Square Enix,workday,,https://squareenix.wd3.myworkdayjobs.com/Careers
+Sega,workday,,https://sega.wd1.myworkdayjobs.com/External
+Capcom,workday,,https://capcom.wd3.myworkdayjobs.com/Careers
+Gearbox Software,workday,,https://gearbox.wd1.myworkdayjobs.com/External
 Wizards of the Coast,workday,,https://hasbro.wd5.myworkdayjobs.com/Hasbro_Careers
 Krafton,greenhouse,krafton,
-Turtle Beach,greenhouse,turtlebeach,
-Meta,greenhouse,meta,
-Intuit,greenhouse,intuit,
-Autodesk,greenhouse,autodesk,
-Zoom,greenhouse,zoom,
+Meta,greenhouse,facebook,
+Intuit,workday,,https://intuit.wd1.myworkdayjobs.com/Intuit_Careers
+Autodesk,workday,,https://autodesk.wd1.myworkdayjobs.com/Ext
+Zoom,workday,,https://zoom.wd5.myworkdayjobs.com/External
 Seagate,workday,,https://seagate.wd1.myworkdayjobs.com/External
 Marvell Technology,workday,,https://marvell.wd1.myworkdayjobs.com/MarvellCareers
-CDW,workday,,https://cdw.wd5.myworkdayjobs.com/CDW_Careers
-Arrow Electronics,workday,,https://arrow.wd1.myworkdayjobs.com/Arrow
+CDW,workday,,https://cdw.wd5.myworkdayjobs.com/CDWCareers
+Arrow Electronics,workday,,https://arrow.wd1.myworkdayjobs.com/ArrowElectronics
 Flex,workday,,https://flex.wd1.myworkdayjobs.com/Flex
 Jabil,workday,,https://jabil.wd1.myworkdayjobs.com/Careers
-BlackRock,greenhouse,blackrock,
-State Street,workday,,https://statestreet.wd1.myworkdayjobs.com/External
+BlackRock,workday,,https://blackrock.wd1.myworkdayjobs.com/BlackRock
+State Street,workday,,https://statestreet.wd1.myworkdayjobs.com/StateStreetCareers
 Raymond James,workday,,https://raymondjames.wd5.myworkdayjobs.com/Raymond_James
 Edward Jones,workday,,https://edwardjones.wd5.myworkdayjobs.com/External
-Ally Financial,greenhouse,ally,
+Ally Financial,workday,,https://ally.wd5.myworkdayjobs.com/ally
 Synchrony Financial,workday,,https://synchrony.wd5.myworkdayjobs.com/Careers
 Elevance Health,workday,,https://elevancehealth.wd1.myworkdayjobs.com/ANT
-Allstate,workday,,https://allstate.wd5.myworkdayjobs.com/Allstate
-State Farm,workday,,https://statefarm.wd1.myworkdayjobs.com/State_Farm_Careers
+Allstate,workday,,https://allstate.wd5.myworkdayjobs.com/External
 Liberty Mutual,workday,,https://libertymutual.wd5.myworkdayjobs.com/LMI_Careers
 MetLife,workday,,https://metlife.wd5.myworkdayjobs.com/careers
 Prudential,workday,,https://prudential.wd5.myworkdayjobs.com/Careers
-Cox Communications,workday,,https://cox.wd1.myworkdayjobs.com/Cox_External_Career_Site
+Cox Communications,workday,,https://cox.wd1.myworkdayjobs.com/External
 Lumen Technologies,workday,,https://lumen.wd5.myworkdayjobs.com/External
 Dish Network,workday,,https://dish.wd5.myworkdayjobs.com/DISHCareers
 Proofpoint,workday,,https://proofpoint.wd5.myworkdayjobs.com/ProofpointCareers
-Darktrace,greenhouse,darktrace,
+Darktrace,workday,,https://darktrace.wd3.myworkdayjobs.com/External
 Exabeam,greenhouse,exabeam,
 Sumo Logic,greenhouse,sumologic,
-Qualys,greenhouse,qualys,
+Qualys,workday,,https://qualys.wd1.myworkdayjobs.com/External
 KnowBe4,greenhouse,knowbe4,
-Cofense,greenhouse,cofense,
-Confluent,greenhouse,confluent,
+Confluent,workday,,https://confluent.wd1.myworkdayjobs.com/External
 Fivetran,greenhouse,fivetran,
-Airbyte,greenhouse,airbyte,
-Astronomer,greenhouse,astronomer,
-Harness,greenhouse,harness,
+Airbyte,ashby,airbyte,
+Astronomer,lever,astronomer,
+Harness,lever,harness,
