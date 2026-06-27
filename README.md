@@ -57,8 +57,15 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 
 | Command | What it does |
 |---|---|
-| `/status` | Summary of all unreviewed internships by category with a browse dropdown |
-| `/browse` | Jump straight into browsing all unreviewed jobs |
+| `/summary` | Summary of all unreviewed internships by category with a browse dropdown |
+| `/pipeline` | Full application funnel with company names — applied, interviews, offers |
+| `/stats` | Application pipeline stats — counts by status and response rate |
+| `/find <query>` | Search indexed jobs by keyword or company name |
+| `/export` | DM a CSV of all applied, interview, and offer jobs |
+| `/check` | Trigger a manual scan immediately |
+| `/status` | Bot health — scan stats, job counts, company error report |
+| `/deactivated` | Export a CSV of deactivated and erroring companies |
+| `/clear-dm` | Delete all bot messages from your DMs for a clean slate |
 
 ---
 
