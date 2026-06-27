@@ -475,11 +475,20 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
 class BrowseView(discord.ui.View):
     """
     Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next | ••• More
+    Auto-deletes after 3 minutes of inactivity.
     """
 
-    def __init__(self, job: dict):
-        super().__init__(timeout=None)
-        self.job = job
+    def __init__(self, job: dict, message: discord.Message | None = None):
+        super().__init__(timeout=180)
+        self.job     = job
+        self.message = message
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                await self.message.delete()
+            except discord.NotFound:
+                pass
 
     async def _go(self, interaction: discord.Interaction, new_index: int):
         jobs = _browse["jobs"]
@@ -490,7 +499,8 @@ class BrowseView(discord.ui.View):
         uj     = db.get_user_job(uid, job.get("job_id", ""))
         status = (uj or {}).get("status", "")
         em     = _make_job_embed(job, index=new_index, total=len(jobs), status=status)
-        await interaction.response.edit_message(embed=em, view=BrowseView(job))
+        view   = BrowseView(job, message=self.message)
+        await interaction.response.edit_message(embed=em, view=view)
 
     async def _mark_direct(self, interaction: discord.Interaction, status: str):
         jid = self.job.get("job_id", "")
@@ -521,18 +531,27 @@ class BrowseView(discord.ui.View):
         uj     = db.get_user_job(uid, self.job.get("job_id", ""))
         status = (uj or {}).get("status", "")
         em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
-        await interaction.response.edit_message(embed=em, view=MoreView(self.job))
+        await interaction.response.edit_message(embed=em, view=MoreView(self.job, message=self.message))
 
 
 class MoreView(discord.ui.View):
     """
     Row 0: 🗣️ Interview | 🎉 Offer | ❌ Rejected | 💤 Snooze | ← Back
     Row 1: 🔗 Copy Link | ⭐ Priority | 📄 Details
+    Auto-deletes after 3 minutes of inactivity (shared with BrowseView).
     """
 
-    def __init__(self, job: dict):
-        super().__init__(timeout=None)
-        self.job = job
+    def __init__(self, job: dict, message: discord.Message | None = None):
+        super().__init__(timeout=180)
+        self.job     = job
+        self.message = message
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                await self.message.delete()
+            except discord.NotFound:
+                pass
 
     async def _mark_direct(self, interaction: discord.Interaction, status: str):
         jid = self.job.get("job_id", "")
@@ -563,7 +582,7 @@ class MoreView(discord.ui.View):
         uj     = db.get_user_job(uid, self.job.get("job_id", ""))
         status = (uj or {}).get("status", "")
         em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
-        await interaction.response.edit_message(embed=em, view=BrowseView(self.job))
+        await interaction.response.edit_message(embed=em, view=BrowseView(self.job, message=self.message))
 
     @discord.ui.button(label="🔗 Copy Link", style=discord.ButtonStyle.secondary, row=1)
     async def link_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -649,7 +668,9 @@ class CategorySelect(discord.ui.Select):
         em = _make_job_embed(job, index=0, total=len(jobs), status=status)
         em.description = f"Browsing: **{cat_label}** — {len(jobs)} jobs\nUse ◀ ▶ to navigate · Applied/Skip to mark"
 
-        await interaction.response.send_message(embed=em, view=BrowseView(job))
+        view = BrowseView(job)
+        await interaction.response.send_message(embed=em, view=view)
+        view.message = await interaction.original_response()
 
 
 class SummaryView(discord.ui.View):
