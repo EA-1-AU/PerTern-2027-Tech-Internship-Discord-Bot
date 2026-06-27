@@ -314,7 +314,7 @@ def extract_location_from_text(text):
     for loc in known:
         if loc.lower() in tl:
             return loc
-    return "United States"
+    return ""
 
 
 def fetch_custom_company(company):
