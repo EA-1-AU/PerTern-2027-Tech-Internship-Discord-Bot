@@ -238,8 +238,18 @@ def _matches_me(job: dict) -> tuple[bool, str]:
 
 _SKILLBRIDGE_RE = re.compile(r'skill\s*bridge', re.IGNORECASE)
 
+_TITLE_BLACKLIST_RE = re.compile(
+    r'\b(pharmac(y|ist|eutical|ology)|dispensing|compounding|'
+    r'dental|dentist|optometr|ophthalmolog|veterinar|'
+    r'nursing|nurse|clinical\s+trial|radiology|radiograph|'
+    r'medical\s+assistant|phlebotom|surgical|anesthes)\b',
+    re.IGNORECASE,
+)
+
 def _is_internship(title: str) -> bool:
     if _SKILLBRIDGE_RE.search(title):
+        return False
+    if _TITLE_BLACKLIST_RE.search(title):
         return False
     return bool(re.search(r'\bintern(ship)?\b', title, re.IGNORECASE))
 
