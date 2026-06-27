@@ -180,20 +180,20 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
         conn.row_factory = sqlite3.Row
         if category:
             rows = conn.execute("""
-                SELECT j.* FROM jobs j
-                LEFT JOIN user_jobs uj
-                    ON j.job_id = uj.job_id AND uj.user_id = ?
+                SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
+                LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
+                LEFT JOIN companies c ON j.company = c.name
                 WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
                 AND j.category = ?
-                ORDER BY j.first_seen DESC
+                ORDER BY co_priority DESC, j.first_seen DESC
             """, (uid, category)).fetchall()
         else:
             rows = conn.execute("""
-                SELECT j.* FROM jobs j
-                LEFT JOIN user_jobs uj
-                    ON j.job_id = uj.job_id AND uj.user_id = ?
+                SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
+                LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
+                LEFT JOIN companies c ON j.company = c.name
                 WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
-                ORDER BY j.first_seen DESC
+                ORDER BY co_priority DESC, j.first_seen DESC
             """, (uid,)).fetchall()
     return [dict(r) for r in rows]
 
@@ -1074,6 +1074,9 @@ async def on_ready():
     if not MY_USER_ID:
         log.error("MY_DISCORD_USER_ID not set!"); return
     db.init_db()
+    from seed_companies import seed
+    n = seed()
+    log.info("Seeded %d companies from CSV", n)
 
     try:
         synced = await tree.sync()

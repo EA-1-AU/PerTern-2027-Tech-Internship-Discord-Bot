@@ -167,6 +167,7 @@ def init_db():
         cur.executescript(SCHEMA)
         for stmt in [
             "ALTER TABLE companies ADD COLUMN fail_count INTEGER DEFAULT 0",
+            "ALTER TABLE companies ADD COLUMN priority INTEGER DEFAULT 0",
             "ALTER TABLE jobs ADD COLUMN subcategory TEXT",
             "ALTER TABLE user_prefs ADD COLUMN cities TEXT DEFAULT '[]'",
             "ALTER TABLE user_prefs ADD COLUMN subcategories TEXT DEFAULT '[]'",
@@ -187,19 +188,19 @@ def init_db():
 
 # ── Companies ─────────────────────────────────────────────────────────────────
 
-def upsert_company(name, source, slug=None, url=None):
+def upsert_company(name, source, slug=None, url=None, priority=0):
     with db_cursor(commit=True) as cur:
         cur.execute(
-            """INSERT INTO companies (name, source, slug, url, active) VALUES (?, ?, ?, ?, 1)
+            """INSERT INTO companies (name, source, slug, url, active, priority) VALUES (?, ?, ?, ?, 1, ?)
                ON CONFLICT(name, source) DO UPDATE SET
-               slug=excluded.slug, url=excluded.url, active=1""",
-            (name, source, slug, url),
+               slug=excluded.slug, url=excluded.url, active=1, priority=excluded.priority""",
+            (name, source, slug, url, priority),
         )
 
 
 def get_all_active_companies():
     with db_cursor() as cur:
-        cur.execute("SELECT * FROM companies WHERE active=1")
+        cur.execute("SELECT * FROM companies WHERE active=1 ORDER BY priority DESC, name ASC")
         return [dict(r) for r in cur.fetchall()]
 
 

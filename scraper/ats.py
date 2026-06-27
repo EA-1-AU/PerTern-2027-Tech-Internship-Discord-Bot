@@ -461,6 +461,82 @@ def fetch_usajobs(api_key: str, email: str) -> list[dict]:
     return jobs
 
 
+def fetch_icims(company: dict) -> list[dict]:
+    """
+    iCIMS public jobs search API.
+    URL format in CSV: https://{slug}.icims.com/jobs/search
+    or: https://careers-{slug}.icims.com/jobs/search
+    The slug is the company's iCIMS subdomain.
+    """
+    from urllib.parse import urlparse
+    company_name = company["name"]
+    raw_url = company.get("url", "")
+    parsed = urlparse(raw_url)
+    host = parsed.netloc  # e.g. careers-northropgrumman.icims.com
+
+    api_base = f"https://{host}"
+    headers = {
+        **USER_AGENT,
+        "Accept": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+
+    jobs = []
+    page = 1
+
+    while True:
+        r = requests.get(
+            f"{api_base}/jobs/search",
+            params={
+                "ss": "1",
+                "searchRelation": "keyword_all",
+                "searchKeyword": "intern",
+                "searchLocation": "",
+                "searchCategory": "",
+                "in_iframe": "1",
+                "page": page,
+            },
+            headers=headers,
+            timeout=30,
+        )
+        r.raise_for_status()
+
+        try:
+            data = r.json()
+        except Exception:
+            break
+
+        postings = data.get("jobs") or data.get("results") or data.get("positions") or []
+        if not postings:
+            break
+
+        for job in postings:
+            title = job.get("jobtitle") or job.get("title") or job.get("Title") or ""
+            if not is_internship_title(title):
+                continue
+            job_id = str(job.get("id") or job.get("jobId") or job.get("Id") or "")
+            location = job.get("joblocation") or job.get("location") or ""
+            if isinstance(location, dict):
+                location = location.get("name") or location.get("city") or ""
+            job_url = job.get("applyUrl") or job.get("url") or f"{api_base}/jobs/{job_id}/job"
+            jobs.append({
+                "job_id": f"icims:{host}:{job_id}",
+                "company": company_name,
+                "source": "iCIMS",
+                "title": title,
+                "location": str(location),
+                "url": job_url,
+                "description": "",
+            })
+
+        total = data.get("totalResults") or data.get("total") or 0
+        if len(jobs) >= total or len(postings) == 0:
+            break
+        page += 1
+
+    return jobs
+
+
 def fetch_adp(company: dict) -> list[dict]:
     """
     ADP WorkforceNow public jobs API.
