@@ -2,3 +2,4 @@ discord.py>=2.3.0
 python-dotenv
 requests
 beautifulsoup4
+psutil

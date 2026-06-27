@@ -972,10 +972,62 @@ async def slash_summary(interaction: discord.Interaction):
     await interaction.followup.send("Summary refreshed!", ephemeral=True)
 
 
-@tree.command(name="status", description="Bot health — scan stats, jobs, company errors")
+def _pi_stats() -> dict:
+    """Read Raspberry Pi hardware stats. Returns empty dict if not on a Pi."""
+    stats = {}
+    try:
+        # CPU temperature
+        with open("/sys/class/thermal/thermal_zone0/temp") as f:
+            stats["cpu_temp"] = round(int(f.read().strip()) / 1000, 1)
+    except Exception:
+        pass
+    try:
+        # CPU usage
+        import psutil
+        stats["cpu_pct"]  = psutil.cpu_percent(interval=0.5)
+        stats["ram_pct"]  = psutil.virtual_memory().percent
+        stats["ram_used"] = round(psutil.virtual_memory().used / 1024**3, 2)
+        stats["ram_total"]= round(psutil.virtual_memory().total / 1024**3, 1)
+        disk = psutil.disk_usage("/")
+        stats["disk_pct"] = disk.percent
+        stats["disk_free"]= round(disk.free / 1024**3, 1)
+    except Exception:
+        pass
+    try:
+        # Fan speed via raspi-gpio / vcgencmd
+        import subprocess
+        r = subprocess.run(["vcgencmd", "measure_temp"], capture_output=True, text=True, timeout=2)
+        if r.returncode == 0:
+            stats["gpu_temp"] = r.stdout.strip().replace("temp=", "").replace("'C", "°C")
+        r2 = subprocess.run(["vcgencmd", "get_throttled"], capture_output=True, text=True, timeout=2)
+        if r2.returncode == 0:
+            throttled_hex = r2.stdout.strip().split("=")[-1]
+            stats["throttled"] = throttled_hex != "0x0"
+    except Exception:
+        pass
+    try:
+        import subprocess, uptime as _up
+        secs = _up.uptime()
+        h, m = divmod(int(secs) // 60, 60)
+        d, h = divmod(h, 24)
+        stats["uptime"] = f"{d}d {h}h {m}m" if d else f"{h}h {m}m"
+    except Exception:
+        try:
+            import subprocess
+            r = subprocess.run(["uptime", "-p"], capture_output=True, text=True, timeout=2)
+            if r.returncode == 0:
+                stats["uptime"] = r.stdout.strip().replace("up ", "")
+        except Exception:
+            pass
+    return stats
+
+
+@tree.command(name="status", description="Bot health — scan stats, jobs, Pi hardware")
 async def slash_status(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    await interaction.response.defer(ephemeral=True)
 
     last_scan  = db.get_bot_state("last_scan_time") or "Never"
     last_count = db.get_bot_state("last_scan_new") or "0"
@@ -983,63 +1035,89 @@ async def slash_status(interaction: discord.Interaction):
     import sqlite3 as _sq
     with _sq.connect(db.DB_PATH) as con:
         con.row_factory = _sq.Row
-        total_cos    = con.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
-        active_cos   = con.execute("SELECT COUNT(*) FROM companies WHERE active=1").fetchone()[0]
-        deactivated  = total_cos - active_cos
-        errored      = con.execute(
-            "SELECT name, fail_count FROM companies WHERE fail_count > 0 AND active=1 ORDER BY fail_count DESC LIMIT 8"
+        total_cos   = con.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+        active_cos  = con.execute("SELECT COUNT(*) FROM companies WHERE active=1").fetchone()[0]
+        deactivated = total_cos - active_cos
+        errored     = con.execute(
+            "SELECT name, fail_count FROM companies WHERE fail_count > 0 AND active=1 ORDER BY fail_count DESC LIMIT 5"
         ).fetchall()
-        applied      = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='applied'").fetchone()[0]
-        interview    = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='interview'").fetchone()[0]
-        offer        = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='offer'").fetchone()[0]
-        snoozed      = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='snoozed'").fetchone()[0]
+        applied   = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='applied'").fetchone()[0]
+        interview = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='interview'").fetchone()[0]
+        offer     = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='offer'").fetchone()[0]
+        snoozed   = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='snoozed'").fetchone()[0]
 
-    total_jobs   = db.get_job_count()
-    unreviewed   = _db_total_unreviewed()
-    reviewed     = total_jobs - unreviewed
+    total_jobs = db.get_job_count()
+    unreviewed = _db_total_unreviewed()
+    pi         = _pi_stats()
 
-    em = discord.Embed(title="⚙️ PerTern Status", color=discord.Color.blurple(),
-                       timestamp=datetime.datetime.now(timezone.utc))
-
-    em.add_field(name="📡 Scanning", value=(
-        f"Every **{SCAN_INTERVAL} min**\n"
-        f"Last: {last_scan}\n"
-        f"+{last_count} new last scan"
-    ), inline=True)
-
-    em.add_field(name="📬 Daily Digest", value=(
-        f"{DIGEST_HOUR}:00 UTC\n"
-        f"~8 AM ET\n"
-        f"Weekly stats: Sunday"
-    ), inline=True)
-
-    em.add_field(name="​", value="​", inline=True)  # spacer
-
-    em.add_field(name="💼 Jobs", value=(
-        f"**{total_jobs:,}** indexed\n"
-        f"**{unreviewed:,}** unreviewed\n"
-        f"**{reviewed:,}** reviewed"
-    ), inline=True)
-
-    em.add_field(name="📋 Pipeline", value=(
-        f"Applied: **{applied}**\n"
-        f"Interview: **{interview}**\n"
-        f"Offer: **{offer}**\n"
-        f"Snoozed: **{snoozed}**"
-    ), inline=True)
-
-    em.add_field(name="🏢 Companies", value=(
-        f"Active: **{active_cos}**\n"
-        f"Deactivated: **{deactivated}**"
-    ), inline=True)
-
-    if errored:
-        err_lines = "\n".join(f"• {r['name']} ({r['fail_count']}x)" for r in errored)
-        em.add_field(name="⚠️ Erroring Companies", value=err_lines, inline=False)
+    # ── Temp colour ───────────────────────────────────────────────────────────
+    temp = pi.get("cpu_temp")
+    if temp and temp >= 75:
+        color = discord.Color.red()
+    elif temp and temp >= 60:
+        color = discord.Color.orange()
     else:
-        em.add_field(name="⚠️ Erroring Companies", value="None ✅", inline=False)
+        color = discord.Color.blurple()
 
-    await interaction.response.send_message(embed=em, ephemeral=True)
+    em = discord.Embed(
+        title="⚙️ PerTern Status",
+        color=color,
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+
+    # ── Scan ──────────────────────────────────────────────────────────────────
+    em.add_field(
+        name="📡 Scanner",
+        value=f"Every **{SCAN_INTERVAL} min** · +**{last_count}** last scan\n🕐 {last_scan}",
+        inline=False,
+    )
+
+    # ── Jobs ──────────────────────────────────────────────────────────────────
+    em.add_field(
+        name="💼 Jobs",
+        value=f"**{total_jobs:,}** indexed · **{unreviewed:,}** unreviewed",
+        inline=True,
+    )
+
+    # ── Pipeline ──────────────────────────────────────────────────────────────
+    em.add_field(
+        name="📋 Pipeline",
+        value=f"✅ {applied} · 🗣️ {interview} · 🎉 {offer} · 💤 {snoozed}",
+        inline=True,
+    )
+
+    # ── Companies ─────────────────────────────────────────────────────────────
+    em.add_field(
+        name="🏢 Companies",
+        value=f"**{active_cos}** active · **{deactivated}** deactivated",
+        inline=False,
+    )
+
+    # ── Pi hardware ───────────────────────────────────────────────────────────
+    if pi:
+        pi_lines = []
+        if temp:
+            throttle_flag = " 🔴 throttled" if pi.get("throttled") else ""
+            pi_lines.append(f"🌡️ CPU **{temp}°C**{throttle_flag}")
+        if pi.get("gpu_temp"):
+            pi_lines.append(f"🎮 GPU **{pi['gpu_temp']}**")
+        if pi.get("cpu_pct") is not None:
+            pi_lines.append(f"⚡ CPU **{pi['cpu_pct']}%**")
+        if pi.get("ram_used") is not None:
+            pi_lines.append(f"🧠 RAM **{pi['ram_used']}/{pi['ram_total']} GB** ({pi['ram_pct']}%)")
+        if pi.get("disk_free") is not None:
+            pi_lines.append(f"💾 Disk **{pi['disk_free']} GB free** ({pi['disk_pct']}% used)")
+        if pi.get("uptime"):
+            pi_lines.append(f"⏱️ Uptime **{pi['uptime']}**")
+        if pi_lines:
+            em.add_field(name="🍓 Raspberry Pi", value="\n".join(pi_lines), inline=False)
+
+    # ── Erroring companies ────────────────────────────────────────────────────
+    if errored:
+        err_lines = "  ".join(f"{r['name']} ({r['fail_count']}x)" for r in errored)
+        em.add_field(name="⚠️ Erroring", value=err_lines, inline=False)
+
+    await interaction.followup.send(embed=em, ephemeral=True)
 
 
 @tree.command(name="find", description="Search indexed jobs by keyword or company name")
