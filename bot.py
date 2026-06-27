@@ -419,6 +419,7 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
         )
         await interaction.response.edit_message(embed=em, view=None)
         msg = await interaction.original_response()
+        await _update_summary()
         await asyncio.sleep(60)
         try:
             await msg.delete()
