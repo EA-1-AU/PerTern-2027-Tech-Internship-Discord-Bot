@@ -367,6 +367,100 @@ def fetch_oracle(company):
     return jobs
 
 
+def fetch_usajobs(api_key: str, email: str) -> list[dict]:
+    """
+    Scrape USAJobs (data.usajobs.gov) for internships matching the resume.
+    Requires a free API key from https://developer.usajobs.gov/
+    """
+    if not api_key or not email:
+        return []
+
+    headers = {
+        "Host": "data.usajobs.gov",
+        "User-Agent": email,
+        "Authorization-Key": api_key,
+    }
+
+    # Targeted searches matching resume focus areas
+    keywords = [
+        "cybersecurity intern",
+        "information security intern",
+        "IT intern",
+        "cloud intern",
+        "data analyst intern",
+        "network security intern",
+        "computer science intern",
+        "intelligence analyst intern",
+    ]
+
+    seen: set[str] = set()
+    jobs: list[dict] = []
+
+    for kw in keywords:
+        try:
+            r = requests.get(
+                "https://data.usajobs.gov/api/search",
+                params={
+                    "Keyword":        kw,
+                    "ResultsPerPage": 25,
+                    "WhoMayApply":    "public",
+                    "DatePosted":     60,
+                },
+                headers=headers,
+                timeout=20,
+            )
+            if not r.ok:
+                continue
+            items = (
+                r.json()
+                .get("SearchResult", {})
+                .get("SearchResultItems", [])
+            )
+            for item in items:
+                pos    = item.get("MatchedObjectDescriptor", {})
+                job_id = pos.get("PositionID", "")
+                if not job_id or job_id in seen:
+                    continue
+                seen.add(job_id)
+
+                title = pos.get("PositionTitle", "")
+                if not is_internship_title(title):
+                    continue
+
+                locs     = pos.get("PositionLocation", [])
+                location = locs[0].get("LocationName", "") if locs else ""
+
+                pay = pos.get("PositionRemuneration", [{}])
+                salary = ""
+                if pay:
+                    lo = pay[0].get("MinimumRange", "")
+                    hi = pay[0].get("MaximumRange", "")
+                    rt = pay[0].get("RateIntervalCode", "")
+                    if lo and hi:
+                        salary = f"${float(lo):,.0f}–${float(hi):,.0f} {rt}"
+
+                apply_uris = pos.get("ApplyURI", [])
+                url = apply_uris[0] if apply_uris else pos.get("PositionURI", "")
+
+                close_date = pos.get("ApplicationCloseDate", "")[:10] if pos.get("ApplicationCloseDate") else ""
+
+                jobs.append({
+                    "job_id":      f"usajobs:{job_id}",
+                    "company":     pos.get("OrganizationName", "US Government"),
+                    "source":      "USAJobs",
+                    "title":       title,
+                    "location":    location,
+                    "url":         url,
+                    "description": pos.get("QualificationSummary", "")[:1000],
+                    "salary":      salary,
+                    "deadline":    close_date,
+                })
+        except Exception:
+            continue
+
+    return jobs
+
+
 def fetch_job_description(job: dict) -> str:
     """
     Fetch the full job description on-demand for a stored job.
