@@ -625,7 +625,7 @@ class MoreView(discord.ui.View):
             color=discord.Color.from_rgb(88, 101, 242),
             url=job.get("url") or None,
         )
-        await interaction.followup.send(embed=em)
+        await interaction.followup.send(embed=em, ephemeral=True)
 
 
 # ── Category select dropdown ──────────────────────────────────────────────────
@@ -659,7 +659,7 @@ class CategorySelect(discord.ui.Select):
         jobs = _db_unreviewed_jobs(category)
         if not jobs:
             await interaction.response.send_message(
-                "No unreviewed jobs in that category right now!", ephemeral=False
+                "No unreviewed jobs in that category right now!", ephemeral=True
             )
             return
         _browse["jobs"]     = jobs
@@ -675,7 +675,7 @@ class CategorySelect(discord.ui.Select):
         em.description = f"Browsing: **{cat_label}** — {len(jobs)} jobs\nUse ◀ ▶ to navigate · Applied/Skip to mark"
 
         view = BrowseView(job)
-        await interaction.response.send_message(embed=em, view=view)
+        await interaction.response.send_message(embed=em, view=view, ephemeral=True)
         view.message = await interaction.original_response()
 
 
