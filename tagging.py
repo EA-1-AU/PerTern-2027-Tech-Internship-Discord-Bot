@@ -499,9 +499,10 @@ _LOC_MODE_RE = re.compile(r'\b(Remote|Hybrid|On-?[Ss]ite)\b')
 # Matches "Washington, D.C." specifically
 _LOC_DC_RE = re.compile(r'Washington,?\s*D\.?C\.?', re.IGNORECASE)
 
-# Matches ANY "Word Word, Word Word" city/region after a separator — catches international locations
+# Matches ANY "City [of/de/la...] Name, Region" after a separator — catches international locations
+# Allows lowercase connector words (of, de, la, the, etc.) inside city names
 _LOC_ANY_RE = re.compile(
-    r'[-–|]\s*([A-Z][A-Za-z]+(?: [A-Z][A-Za-z]+){0,2},\s*[A-Z][A-Za-z]+(?: [A-Za-z]+){0,3})'
+    r'[-–|]\s*([A-Z][A-Za-z]+(?:\s+[A-Za-z]+){0,4},\s*[A-Z][A-Za-z]+(?:\s+[A-Za-z]+){0,3})'
     r'(?:\s*$|\s*[-|]|\s*\d)'
 )
 
