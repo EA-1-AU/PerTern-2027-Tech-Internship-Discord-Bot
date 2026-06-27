@@ -66,18 +66,28 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 
 PerTern filters across these categories by default. Edit `MY_CATEGORIES` and `MY_KEYWORDS` in `bot.py` to match your own background.
 
-| Category | Example roles |
+| Category | Subcategories |
 |---|---|
-| 🔒 Cybersecurity | Security Analyst, Penetration Tester, SOC Intern |
-| ☁️ DevOps & Cloud | Cloud Engineer, Site Reliability, Platform Intern |
-| 📈 Data Analytics | Data Analyst, BI Intern, Reporting Analyst |
-| 📊 Data Science | Data Science Intern, Research Analyst |
-| 🔩 Data Engineering | Data Pipeline, ETL, Database Intern |
-| 💻 Software Engineering | SWE Intern, Backend, Frontend, Full-Stack |
-| 🤖 AI & Machine Learning | ML Engineer, AI Research, LLM Intern |
-| ⚙️ Operations & IT | IT Support, Sys Admin, Help Desk Intern |
+| 🔒 Cybersecurity | Security Engineering, Network Security, Cloud Security, Pen Testing, SOC & Threat Intel, Incident Response, GRC, Cryptography |
+| ☁️ DevOps & Cloud | DevOps & CI/CD, Cloud Engineering, Site Reliability, IT & Sysadmin, Automation & Scripting |
+| 💻 Software Engineering | General, Frontend, Backend, Mobile, Game Dev, QA & Test Engineering |
+| 📈 Data Analytics | Data Analyst, BI, Tableau, Power BI, Reporting |
+| 📊 Data Science | Data Scientist, Research Analyst, Applied Scientist |
+| 🔩 Data Engineering | Data Pipeline, ETL, Spark, Airflow, Database Administration |
+| 🤖 AI & Machine Learning | ML Engineering, Computer Vision, NLP & Language AI |
+| 💼 Business & Finance | Investment Banking, Consulting, Product Management, Finance, Sales |
+| 🎨 Creative & Design | UI/UX, Graphic Design, Video & Animation, Content |
+| 🔬 Science & Research | Biology, Chemistry, Physics, Aerospace, Climate |
+| 🏥 Healthcare & Medicine | Clinical Research, Biotech, Public Health, Healthcare IT |
+| ⚖️ Law & Policy | Legal, Public Policy, Compliance, IP Law |
+| 📰 Media & Communications | Journalism, PR, Marketing, Social Media |
+| 🏛️ Government & Defense | Intelligence, Defense Tech, Civil Service |
+| 🎓 Education & Non-profit | Teaching, EdTech, Social Work, Non-profit |
+| ⚙️ Operations & HR | Supply Chain, Project Management, HR, Customer Success |
+| 🔧 Hardware & Embedded | Embedded Systems, Hardware Engineering, Robotics |
+| ⛓️ Blockchain & Web3 | Smart Contracts, DeFi, Web3 Engineering |
 
-Keyword matching includes: `cybersecurity`, `network security`, `cloud`, `python`, `sql`, `linux`, `data analyst`, `power bi`, `it support`, `incident response`, `vulnerability`, and more.
+Keyword matching includes: `cybersecurity`, `network security`, `cloud security`, `cloud`, `python`, `sql`, `linux`, `data analyst`, `power bi`, `it support`, `incident response`, `vulnerability`, `siem`, `zero trust`, and more.
 
 ---
 
