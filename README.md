@@ -96,7 +96,7 @@ Keyword matching includes: `cybersecurity`, `network security`, `cloud security`
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/EA-1-AU/PerTern.git
+git clone https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot.git
 cd PerTern
 python3 -m venv venv
 source venv/bin/activate
@@ -195,6 +195,6 @@ PerTern/
 
 <div align="center">
 
-Made with ☕ · [Report an issue](https://github.com/EA-1-AU/PerTern/issues)
+Made with ☕ · [Report an issue](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot/issues)
 
 </div>
