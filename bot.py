@@ -1065,31 +1065,45 @@ async def slash_status(interaction: discord.Interaction):
         timestamp=datetime.datetime.now(timezone.utc),
     )
 
-    # ── Scan ──────────────────────────────────────────────────────────────────
+    # ── Scanner ───────────────────────────────────────────────────────────────
     em.add_field(
-        name="📡 Scanner",
-        value=f"Every **{SCAN_INTERVAL} min** · +**{last_count}** last scan\n🕐 {last_scan}",
+        name="📡  Scanner",
+        value=(
+            f"> Every **{SCAN_INTERVAL} min**\n"
+            f"> +**{last_count}** new last scan\n"
+            f"> Last ran: {last_scan}"
+        ),
         inline=False,
     )
 
-    # ── Jobs ──────────────────────────────────────────────────────────────────
+    # ── Jobs & Pipeline ───────────────────────────────────────────────────────
     em.add_field(
-        name="💼 Jobs",
-        value=f"**{total_jobs:,}** indexed · **{unreviewed:,}** unreviewed",
-        inline=True,
+        name="💼  Jobs",
+        value=(
+            f"> **{total_jobs:,}** indexed\n"
+            f"> **{unreviewed:,}** unreviewed"
+        ),
+        inline=False,
     )
 
-    # ── Pipeline ──────────────────────────────────────────────────────────────
     em.add_field(
-        name="📋 Pipeline",
-        value=f"✅ {applied} · 🗣️ {interview} · 🎉 {offer} · 💤 {snoozed}",
-        inline=True,
+        name="📋  Pipeline",
+        value=(
+            f"> ✅ Applied — **{applied}**\n"
+            f"> 🗣️ Interview — **{interview}**\n"
+            f"> 🎉 Offer — **{offer}**\n"
+            f"> 💤 Snoozed — **{snoozed}**"
+        ),
+        inline=False,
     )
 
     # ── Companies ─────────────────────────────────────────────────────────────
     em.add_field(
-        name="🏢 Companies",
-        value=f"**{active_cos}** active · **{deactivated}** deactivated",
+        name="🏢  Companies",
+        value=(
+            f"> **{active_cos}** active\n"
+            f"> **{deactivated}** deactivated"
+        ),
         inline=False,
     )
 
@@ -1097,25 +1111,25 @@ async def slash_status(interaction: discord.Interaction):
     if pi:
         pi_lines = []
         if temp:
-            throttle_flag = " 🔴 throttled" if pi.get("throttled") else ""
-            pi_lines.append(f"🌡️ CPU **{temp}°C**{throttle_flag}")
+            throttle_flag = "  🔴 throttling!" if pi.get("throttled") else ""
+            pi_lines.append(f"> 🌡️ Temp — **{temp}°C**{throttle_flag}")
         if pi.get("gpu_temp"):
-            pi_lines.append(f"🎮 GPU **{pi['gpu_temp']}**")
+            pi_lines.append(f"> 🎮 GPU — **{pi['gpu_temp']}**")
         if pi.get("cpu_pct") is not None:
-            pi_lines.append(f"⚡ CPU **{pi['cpu_pct']}%**")
+            pi_lines.append(f"> ⚡ CPU — **{pi['cpu_pct']}%**")
         if pi.get("ram_used") is not None:
-            pi_lines.append(f"🧠 RAM **{pi['ram_used']}/{pi['ram_total']} GB** ({pi['ram_pct']}%)")
+            pi_lines.append(f"> 🧠 RAM — **{pi['ram_used']}/{pi['ram_total']} GB** ({pi['ram_pct']}%)")
         if pi.get("disk_free") is not None:
-            pi_lines.append(f"💾 Disk **{pi['disk_free']} GB free** ({pi['disk_pct']}% used)")
+            pi_lines.append(f"> 💾 Disk — **{pi['disk_free']} GB free** ({pi['disk_pct']}% used)")
         if pi.get("uptime"):
-            pi_lines.append(f"⏱️ Uptime **{pi['uptime']}**")
+            pi_lines.append(f"> ⏱️ Uptime — **{pi['uptime']}**")
         if pi_lines:
-            em.add_field(name="🍓 Raspberry Pi", value="\n".join(pi_lines), inline=False)
+            em.add_field(name="🍓  Raspberry Pi", value="\n".join(pi_lines), inline=False)
 
     # ── Erroring companies ────────────────────────────────────────────────────
     if errored:
-        err_lines = "  ".join(f"{r['name']} ({r['fail_count']}x)" for r in errored)
-        em.add_field(name="⚠️ Erroring", value=err_lines, inline=False)
+        err_lines = "\n".join(f"> • {r['name']} ({r['fail_count']}x)" for r in errored)
+        em.add_field(name="⚠️  Erroring Companies", value=err_lines, inline=False)
 
     await interaction.followup.send(embed=em, ephemeral=True)
 
