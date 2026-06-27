@@ -876,41 +876,73 @@ async def slash_summary(interaction: discord.Interaction):
     await interaction.followup.send("Summary refreshed!", ephemeral=True)
 
 
-@tree.command(name="status", description="Bot health — uptime, jobs indexed, scan interval")
+@tree.command(name="status", description="Bot health — scan stats, jobs, company errors")
 async def slash_status(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
 
-    last_scan = db.get_bot_state("last_scan_time") or "Never"
+    last_scan  = db.get_bot_state("last_scan_time") or "Never"
     last_count = db.get_bot_state("last_scan_new") or "0"
 
-    # Companies with failures
     import sqlite3 as _sq
     with _sq.connect(db.DB_PATH) as con:
         con.row_factory = _sq.Row
-        errored = con.execute(
-            "SELECT name, fail_count FROM companies WHERE fail_count > 0 AND active=1 ORDER BY fail_count DESC LIMIT 5"
+        total_cos    = con.execute("SELECT COUNT(*) FROM companies").fetchone()[0]
+        active_cos   = con.execute("SELECT COUNT(*) FROM companies WHERE active=1").fetchone()[0]
+        deactivated  = total_cos - active_cos
+        errored      = con.execute(
+            "SELECT name, fail_count FROM companies WHERE fail_count > 0 AND active=1 ORDER BY fail_count DESC LIMIT 8"
         ).fetchall()
-        deactivated = con.execute(
-            "SELECT COUNT(*) FROM companies WHERE active=0"
-        ).fetchone()[0]
+        applied      = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='applied'").fetchone()[0]
+        interview    = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='interview'").fetchone()[0]
+        offer        = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='offer'").fetchone()[0]
+        snoozed      = con.execute("SELECT COUNT(*) FROM user_jobs WHERE status='snoozed'").fetchone()[0]
 
-    err_lines = "\n".join(f"  • {r['name']} ({r['fail_count']} fails)" for r in errored) or "  None"
+    total_jobs   = db.get_job_count()
+    unreviewed   = _db_total_unreviewed()
+    reviewed     = total_jobs - unreviewed
 
-    em = discord.Embed(
-        title="⚙️ PerTern Status",
-        description=(
-            f"**Jobs indexed:** {db.get_job_count():,}\n"
-            f"**Unreviewed:** {_db_total_unreviewed():,}\n"
-            f"**Last scan:** {last_scan} (+{last_count} new)\n"
-            f"**Scan interval:** every {SCAN_INTERVAL} minutes\n"
-            f"**Daily digest:** {DIGEST_HOUR}:00 UTC (~8am ET)\n"
-            f"**Deactivated companies:** {deactivated}\n\n"
-            f"**Companies with errors:**\n{err_lines}"
-        ),
-        color=discord.Color.green(),
-        timestamp=datetime.datetime.now(timezone.utc),
-    )
+    em = discord.Embed(title="⚙️ PerTern Status", color=discord.Color.blurple(),
+                       timestamp=datetime.datetime.now(timezone.utc))
+
+    em.add_field(name="📡 Scanning", value=(
+        f"Every **{SCAN_INTERVAL} min**\n"
+        f"Last: {last_scan}\n"
+        f"+{last_count} new last scan"
+    ), inline=True)
+
+    em.add_field(name="📬 Daily Digest", value=(
+        f"{DIGEST_HOUR}:00 UTC\n"
+        f"~8 AM ET\n"
+        f"Weekly stats: Sunday"
+    ), inline=True)
+
+    em.add_field(name="​", value="​", inline=True)  # spacer
+
+    em.add_field(name="💼 Jobs", value=(
+        f"**{total_jobs:,}** indexed\n"
+        f"**{unreviewed:,}** unreviewed\n"
+        f"**{reviewed:,}** reviewed"
+    ), inline=True)
+
+    em.add_field(name="📋 Pipeline", value=(
+        f"Applied: **{applied}**\n"
+        f"Interview: **{interview}**\n"
+        f"Offer: **{offer}**\n"
+        f"Snoozed: **{snoozed}**"
+    ), inline=True)
+
+    em.add_field(name="🏢 Companies", value=(
+        f"Active: **{active_cos}**\n"
+        f"Deactivated: **{deactivated}**"
+    ), inline=True)
+
+    if errored:
+        err_lines = "\n".join(f"• {r['name']} ({r['fail_count']}x)" for r in errored)
+        em.add_field(name="⚠️ Erroring Companies", value=err_lines, inline=False)
+    else:
+        em.add_field(name="⚠️ Erroring Companies", value="None ✅", inline=False)
+
     await interaction.response.send_message(embed=em, ephemeral=True)
 
 
@@ -1064,20 +1096,7 @@ async def on_ready():
         log.info("Startup DM clear: deleted %d messages", deleted)
         db.set_bot_state(_SUMMARY_MSG_KEY, "")
 
-        await dm.send(embed=discord.Embed(
-            title="✅ PerTern Online",
-            description=(
-                f"Scanning every **{SCAN_INTERVAL} minutes**.\n"
-                f"Daily digest at **{DIGEST_HOUR}:00 UTC** (~8am ET).\n"
-                f"Weekly stats every **Sunday**.\n\n"
-                f"**{db.get_job_count():,}** internships already indexed.\n\n"
-                f"Commands: `/check` `/summary` `/stats` `/status`\n"
-                f"`/find <keyword>` `/export` `/pipeline` `/clear-dm`"
-            ),
-            color=discord.Color.green(),
-            timestamp=datetime.datetime.now(timezone.utc),
-        ))
-        # Post fresh summary
+        # Post fresh summary only
         await _update_summary()
     except Exception as e:
         log.warning("Startup DM failed: %s", e)
