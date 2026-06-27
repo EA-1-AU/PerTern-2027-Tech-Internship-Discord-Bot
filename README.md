@@ -64,18 +64,20 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 
 ## Matched categories
 
-| Category | Why |
-|---|---|
-| 🔒 Cybersecurity | BS in Cybersecurity + Google Cybersecurity cert |
-| ☁️ DevOps & Cloud | Google Cloud cert + GCP experience at Lowe's |
-| 📈 Data Analytics | Power BI, Looker Studio, Excel at Lowe's internship |
-| 📊 Data Science | Python for Everybody cert + data analysis background |
-| 🔩 Data Engineering | SQL + data pipeline experience |
-| 💻 Software Engineering | Python, JavaScript, C# from Code Ninjas |
-| 🤖 AI & Machine Learning | Google AI Essentials cert |
-| ⚙️ Operations & HR | IT Support cert + system administration skills |
+PerTern filters across these categories by default. Edit `MY_CATEGORIES` and `MY_KEYWORDS` in `bot.py` to match your own background.
 
-Plus keyword matching for: `cybersecurity`, `network security`, `cloud`, `gcp`, `python`, `sql`, `linux`, `data analyst`, `power bi`, `looker`, `it support`, `incident response`, `vulnerability`, and more.
+| Category | Example roles |
+|---|---|
+| 🔒 Cybersecurity | Security Analyst, Penetration Tester, SOC Intern |
+| ☁️ DevOps & Cloud | Cloud Engineer, Site Reliability, Platform Intern |
+| 📈 Data Analytics | Data Analyst, BI Intern, Reporting Analyst |
+| 📊 Data Science | Data Science Intern, Research Analyst |
+| 🔩 Data Engineering | Data Pipeline, ETL, Database Intern |
+| 💻 Software Engineering | SWE Intern, Backend, Frontend, Full-Stack |
+| 🤖 AI & Machine Learning | ML Engineer, AI Research, LLM Intern |
+| ⚙️ Operations & IT | IT Support, Sys Admin, Help Desk Intern |
+
+Keyword matching includes: `cybersecurity`, `network security`, `cloud`, `python`, `sql`, `linux`, `data analyst`, `power bi`, `it support`, `incident response`, `vulnerability`, and more.
 
 ---
 
