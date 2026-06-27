@@ -294,12 +294,32 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
     deadline = job.get("deadline", "")
 
     status_prefix = {"applied": "✅ ", "skipped": "⏭️ "}.get(status, "")
-    color = {"applied": discord.Color.green(), "skipped": discord.Color.dark_gray()}.get(
-        status, discord.Color.from_rgb(88, 101, 242)
-    )
+
+    # Deadline urgency
+    deadline_badge = ""
+    if deadline and not status:
+        from tagging import parse_deadline_date
+        import datetime as _dt
+        dl_date = parse_deadline_date(deadline)
+        if dl_date:
+            days_left = (dl_date - _dt.date.today()).days
+            if days_left <= 3:
+                color = discord.Color.red()
+                deadline_badge = "🚨 "
+            elif days_left <= 7:
+                color = discord.Color.orange()
+                deadline_badge = "⚠️ "
+            else:
+                color = discord.Color.from_rgb(88, 101, 242)
+        else:
+            color = discord.Color.from_rgb(88, 101, 242)
+    else:
+        color = {"applied": discord.Color.green(), "skipped": discord.Color.dark_gray()}.get(
+            status, discord.Color.from_rgb(88, 101, 242)
+        )
 
     em = discord.Embed(
-        title=f"{status_prefix}{title}",
+        title=f"{deadline_badge}{status_prefix}{title}",
         url=url or None,
         color=color,
         timestamp=datetime.datetime.now(timezone.utc),
@@ -310,7 +330,23 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
     if term:     em.add_field(name="📅 Term",     value=term,       inline=True)
     if salary:   em.add_field(name="💰 Salary",   value=salary,     inline=True)
     if cat:      em.add_field(name="🏷️ Category", value=cat,        inline=True)
-    if deadline: em.add_field(name="⏰ Deadline", value=deadline,   inline=True)
+    if deadline:
+        dl_display = deadline
+        try:
+            from tagging import parse_deadline_date
+            import datetime as _dt
+            dl_date = parse_deadline_date(deadline)
+            if dl_date:
+                days_left = (dl_date - _dt.date.today()).days
+                if days_left < 0:
+                    dl_display = f"{deadline} (closed)"
+                elif days_left == 0:
+                    dl_display = f"{deadline} (TODAY!)"
+                elif days_left <= 7:
+                    dl_display = f"{deadline} ({days_left}d left)"
+        except Exception:
+            pass
+        em.add_field(name="⏰ Deadline", value=dl_display, inline=True)
     if reason:   em.add_field(name="🎯 Why sent", value=reason,     inline=False)
     if url:      em.add_field(name="🔗 Apply",    value=f"[Open listing]({url})", inline=False)
     if status:   em.add_field(name="📝 Status",   value=f"{status_prefix}{status.title()}", inline=False)
@@ -438,8 +474,7 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
 
 class BrowseView(discord.ui.View):
     """
-    Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next
-    Row 1: 🗣️ Interview | 🎉 Offer | 💤 Snooze | 🔗 Link
+    Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next | ••• More
     """
 
     def __init__(self, job: dict):
@@ -464,8 +499,6 @@ class BrowseView(discord.ui.View):
         db.set_user_status(uid, jid, status)
         await _advance_after_mark(interaction, status)
 
-    # ── Row 0 ─────────────────────────────────────────────────────────────────
-
     @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary, row=0)
     async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._go(interaction, _browse["index"] - 1)
@@ -482,19 +515,55 @@ class BrowseView(discord.ui.View):
     async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._go(interaction, _browse["index"] + 1)
 
-    # ── Row 1 ─────────────────────────────────────────────────────────────────
+    @discord.ui.button(label="••• More", style=discord.ButtonStyle.secondary, row=0)
+    async def more_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        uid    = str(MY_USER_ID)
+        uj     = db.get_user_job(uid, self.job.get("job_id", ""))
+        status = (uj or {}).get("status", "")
+        em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
+        await interaction.response.edit_message(embed=em, view=MoreView(self.job))
 
-    @discord.ui.button(label="🗣️ Interview", style=discord.ButtonStyle.primary, row=1)
+
+class MoreView(discord.ui.View):
+    """
+    Row 0: 🗣️ Interview | 🎉 Offer | ❌ Rejected | 💤 Snooze | ← Back
+    Row 1: 🔗 Copy Link | ⭐ Priority | 📄 Details
+    """
+
+    def __init__(self, job: dict):
+        super().__init__(timeout=None)
+        self.job = job
+
+    async def _mark_direct(self, interaction: discord.Interaction, status: str):
+        jid = self.job.get("job_id", "")
+        uid = str(MY_USER_ID)
+        db.ensure_user_job(uid, jid)
+        db.set_user_status(uid, jid, status)
+        await _advance_after_mark(interaction, status)
+
+    @discord.ui.button(label="🗣️ Interview", style=discord.ButtonStyle.primary, row=0)
     async def interview_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._mark_direct(interaction, "interview")
 
-    @discord.ui.button(label="🎉 Offer", style=discord.ButtonStyle.primary, row=1)
+    @discord.ui.button(label="🎉 Offer", style=discord.ButtonStyle.primary, row=0)
     async def offer_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._mark_direct(interaction, "offer")
 
-    @discord.ui.button(label="💤 Snooze", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="❌ Rejected", style=discord.ButtonStyle.danger, row=0)
+    async def rejected_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark_direct(interaction, "rejected")
+
+    @discord.ui.button(label="💤 Snooze", style=discord.ButtonStyle.secondary, row=0)
     async def snooze_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(SnoozeModal(self.job))
+
+    @discord.ui.button(label="← Back", style=discord.ButtonStyle.secondary, row=0)
+    async def back_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        uid    = str(MY_USER_ID)
+        uj     = db.get_user_job(uid, self.job.get("job_id", ""))
+        status = (uj or {}).get("status", "")
+        em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
+        await interaction.response.edit_message(embed=em, view=BrowseView(self.job))
 
     @discord.ui.button(label="🔗 Copy Link", style=discord.ButtonStyle.secondary, row=1)
     async def link_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -504,11 +573,7 @@ class BrowseView(discord.ui.View):
         else:
             await interaction.response.send_message("No URL available for this listing.", ephemeral=True)
 
-    @discord.ui.button(label="❌ Rejected", style=discord.ButtonStyle.danger, row=1)
-    async def rejected_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._mark_direct(interaction, "rejected")
-
-    @discord.ui.button(label="⭐ Priority", style=discord.ButtonStyle.secondary, row=2)
+    @discord.ui.button(label="⭐ Priority", style=discord.ButtonStyle.secondary, row=1)
     async def priority_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         company = self.job.get("company", "")
         new_val = db.toggle_company_priority(company)
@@ -518,14 +583,13 @@ class BrowseView(discord.ui.View):
             ephemeral=True,
         )
 
-    @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=2)
+    @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=1)
     async def details_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True)
         loop = asyncio.get_event_loop()
         job  = self.job
         desc = await loop.run_in_executor(None, lambda: fetch_job_description(job))
         if not desc:
-            # Fall back to stored description
             desc = job.get("description", "")
         if not desc:
             await interaction.followup.send("No description available for this listing.", ephemeral=True)

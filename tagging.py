@@ -339,8 +339,27 @@ _SALARY_ANNUAL_RE = re.compile(
     re.IGNORECASE,
 )
 _DEADLINE_RE = re.compile(
-    r'(?:deadline|apply by|applications?\s+(?:close|due|end)|closing date)[:\s]+'
-    r'([A-Za-z]+\s+\d{1,2}(?:,?\s+\d{4})?|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+    r'(?:'
+    r'deadline'
+    r'|apply\s+by'
+    r'|application\s+deadline'
+    r'|applications?\s+(?:close[sd]?|due|end|must\s+be\s+(?:submitted|received))'
+    r'|closing\s+date'
+    r'|close\s+date'
+    r'|position\s+closes?'
+    r'|posting\s+closes?'
+    r'|job\s+closes?'
+    r'|priority\s+deadline'
+    r'|submit\s+(?:your\s+)?application\s+by'
+    r'|last\s+day\s+to\s+apply'
+    r'|open\s+until'
+    r')[:\s]+'
+    r'('
+    r'[A-Za-z]+\.?\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?'
+    r'|\d{1,2}\s+[A-Za-z]+\.?(?:\s+\d{4})?'
+    r'|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
+    r'|\d{4}-\d{2}-\d{2}'
+    r')',
     re.IGNORECASE,
 )
 _INTERN_WORD  = re.compile(r'\bintern(ship)?\b', re.IGNORECASE)
@@ -390,6 +409,42 @@ def guess_salary(description: str) -> str | None:
 def guess_deadline(description: str) -> str | None:
     m = _DEADLINE_RE.search(description or "")
     return m.group(1).strip() if m else None
+
+
+_DEADLINE_DATE_FMTS = [
+    "%B %d, %Y", "%b %d, %Y",    # January 15, 2026 / Jan 15, 2026
+    "%B %d %Y",  "%b %d %Y",     # January 15 2026
+    "%B %dst, %Y", "%B %dnd, %Y", "%B %drd, %Y", "%B %dth, %Y",
+    "%b %dst, %Y", "%b %dnd, %Y", "%b %drd, %Y", "%b %dth, %Y",
+    "%B %d",     "%b %d",        # January 15 (no year — assumes current/next year)
+    "%d %B %Y",  "%d %b %Y",     # 15 January 2026
+    "%d %B",     "%d %b",        # 15 January
+    "%m/%d/%Y",  "%m/%d/%y",     # 01/15/2026 / 01/15/26
+    "%m-%d-%Y",  "%m-%d-%y",
+    "%Y-%m-%d",                  # 2026-01-15
+]
+
+
+def parse_deadline_date(deadline_str: str) -> "datetime.date | None":
+    """Try to parse a deadline string into a date object. Returns None if unparseable."""
+    import datetime as _dt
+    s = deadline_str.strip()
+    # strip ordinal suffixes before trying formats without them
+    cleaned = re.sub(r'(\d+)(?:st|nd|rd|th)', r'\1', s, flags=re.IGNORECASE)
+    for text in (s, cleaned):
+        for fmt in _DEADLINE_DATE_FMTS:
+            try:
+                d = _dt.datetime.strptime(text, fmt).date()
+                # If no year in format, assign current or next year
+                if "%Y" not in fmt and "%y" not in fmt:
+                    today = _dt.date.today()
+                    d = d.replace(year=today.year)
+                    if d < today:
+                        d = d.replace(year=today.year + 1)
+                return d
+            except ValueError:
+                continue
+    return None
 
 
 def is_probably_real_internship(title: str) -> bool:
