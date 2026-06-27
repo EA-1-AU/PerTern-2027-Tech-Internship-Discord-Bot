@@ -1276,17 +1276,22 @@ async def slash_log(interaction: discord.Interaction):
         })
 
     csv_buf.seek(0)
-    today    = datetime.datetime.now().strftime("%Y%m%d")
-    csv_name = f"pertern_companies_{today}.csv"
-    log_name = f"pertern_log_{today}.txt"
+    today = datetime.datetime.now().strftime("%Y%m%d")
 
-    files = [discord.File(fp=io.BytesIO(csv_buf.getvalue().encode()), filename=csv_name)]
-    if log_snippet:
-        files.append(discord.File(fp=io.BytesIO(log_snippet.encode()), filename=log_name))
+    combined  = "=== RECENT LOGS (last 50 lines) ===\n\n"
+    combined += log_snippet or "(no log file found)\n"
+    combined += "\n\n=== COMPANY ISSUES ===\n\n"
+    combined += csv_buf.getvalue()
+
+    fname = f"pertern_report_{today}.txt"
+    file  = discord.File(fp=io.BytesIO(combined.encode()), filename=fname)
 
     issue_count = len(companies)
-    summary = f"📋 **{issue_count} companies** with issues  ·  last 50 log lines attached"
-    await interaction.followup.send(content=summary, files=files, ephemeral=True)
+    await interaction.followup.send(
+        content=f"📋 **{issue_count} companies** with issues",
+        file=file,
+        ephemeral=True,
+    )
 
 
 @tree.command(name="pipeline", description="See your full application funnel with company names")
