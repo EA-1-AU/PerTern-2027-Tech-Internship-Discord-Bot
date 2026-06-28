@@ -48,7 +48,7 @@ SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
 DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
 REQUIRE_SALARY  = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
 OLLAMA_URL      = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "phi3:mini")
 _RESUME_PATH    = os.path.join(os.path.dirname(__file__), "resume.txt")
 
 # ── Personal filter ───────────────────────────────────────────────────────────
@@ -1594,6 +1594,7 @@ async def on_ready():
     snooze_check_loop.start()
     followup_reminder_loop.start()
     status_rotation_loop.start()
+    ollama_keepalive_loop.start()
 
 
 _STATUS_ROTATION = [
@@ -1638,6 +1639,29 @@ async def status_rotation_loop():
         activity=discord.Activity(type=atype, name=text),
     )
     _status_index += 1
+
+
+@tasks.loop(minutes=5)
+async def ollama_keepalive_loop():
+    """Ping Ollama every 5 minutes to keep the model warm in RAM."""
+    try:
+        import urllib.request
+        payload = json.dumps({
+            "model":      OLLAMA_MODEL,
+            "prompt":     "hi",
+            "stream":     False,
+            "keep_alive": "10m",
+        }).encode()
+        req = urllib.request.Request(
+            f"{OLLAMA_URL}/api/generate",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as _:
+            pass
+    except Exception:
+        pass
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
