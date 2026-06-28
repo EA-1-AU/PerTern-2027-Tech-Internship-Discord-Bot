@@ -527,8 +527,8 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
 
 class BrowseView(discord.ui.View):
     """
-    Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next
-    Row 1: 🤖 Match | ••• More
+    Row 0: ◀ Prev | ✅ Applied | ▶ Next
+    Row 1: ⏭️ Skip | 🤖 Match | ••• More
     Auto-deletes after 3 minutes of inactivity.
     """
 
@@ -571,13 +571,13 @@ class BrowseView(discord.ui.View):
     async def applied_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplyNoteModal(self.job))
 
-    @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.danger, row=0)
-    async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self._mark_direct(interaction, "skipped")
-
     @discord.ui.button(label="▶ Next", style=discord.ButtonStyle.secondary, row=0)
     async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._go(interaction, _browse["index"] + 1)
+
+    @discord.ui.button(label="⏭️ Skip", style=discord.ButtonStyle.danger, row=1)
+    async def skip_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._mark_direct(interaction, "skipped")
 
     @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.primary, row=1)
     async def match_btn_browse(self, interaction: discord.Interaction, button: discord.ui.Button):
