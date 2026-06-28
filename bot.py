@@ -1228,20 +1228,16 @@ def _ollama_match(job: dict, description: str) -> str:
     company  = job.get("company", "Unknown Company")
     location = job.get("location", "")
 
-    # Keep prompt short so tinyllama finishes in reasonable time on Pi
     resume_short = resume[:800]
     desc_short   = description[:400] if description else "No description available."
 
     prompt = (
-        f"You are a career advisor. Rate this internship for the student in 4 lines max.\n"
-        f"Student skills: {resume_short}\n"
-        f"Job: {title} at {company} ({location})\n"
-        f"Description: {desc_short}\n"
-        f"Reply ONLY in this format:\n"
-        f"SCORE: X/10\n"
-        f"VERDICT: Strong/Good/Weak/No Match\n"
-        f"FITS: one sentence why\n"
-        f"APPLY: yes or no and one reason"
+        f"You are a career advisor. Answer in exactly 2 lines, no more.\n"
+        f"Line 1: YES or NO\n"
+        f"Line 2: One sentence reason.\n\n"
+        f"Student: {resume_short}\n"
+        f"Job: {title} at {company}. {desc_short}\n\n"
+        f"Should this student apply?"
     )
 
     payload = json.dumps({
