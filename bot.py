@@ -48,7 +48,7 @@ SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
 DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
 REQUIRE_SALARY  = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
 OLLAMA_URL      = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "phi3:mini")
+OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "tinyllama")
 _RESUME_PATH    = os.path.join(os.path.dirname(__file__), "resume.txt")
 
 # ── Personal filter ───────────────────────────────────────────────────────────
