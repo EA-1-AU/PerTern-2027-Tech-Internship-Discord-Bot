@@ -1254,7 +1254,22 @@ def _ollama_match(job: dict, description: str) -> str:
     )
     with urllib.request.urlopen(req, timeout=300) as resp:
         data = json.loads(resp.read())
-    return data.get("response", "No response from Ollama.").strip()
+    raw = data.get("response", "").strip()
+
+    # Extract YES/NO regardless of how tinyllama formatted it
+    upper = raw.upper()
+    if "YES" in upper:
+        verdict = "✅ YES"
+    elif "NO" in upper:
+        verdict = "❌ NO"
+    else:
+        verdict = "🤷 UNCLEAR"
+
+    # Grab the first real sentence as the reason
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", raw) if len(s.strip()) > 10]
+    reason = sentences[0] if sentences else raw[:200]
+
+    return f"**{verdict}**\n{reason}"
 
 
 def _pi_stats() -> dict:
