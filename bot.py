@@ -1102,6 +1102,85 @@ async def slash_summary(interaction: discord.Interaction):
     await interaction.followup.send("Summary refreshed!", ephemeral=True)
 
 
+def _make_pi_embed() -> discord.Embed:
+    """Build a live Pi stats embed."""
+    s = _pi_stats()
+    now = datetime.datetime.now().strftime("%H:%M:%S")
+
+    cpu_temp = s.get("cpu_temp", "N/A")
+    gpu_temp = s.get("gpu_temp", "N/A")
+    cpu_pct  = s.get("cpu_pct", "N/A")
+    ram_used = s.get("ram_used", "N/A")
+    ram_tot  = s.get("ram_total", "N/A")
+    ram_pct  = s.get("ram_pct", "N/A")
+    disk_free= s.get("disk_free", "N/A")
+    disk_pct = s.get("disk_pct", "N/A")
+    uptime   = s.get("uptime", "N/A")
+    throttled= s.get("throttled", False)
+
+    if isinstance(cpu_temp, float):
+        color = discord.Color.red() if cpu_temp >= 75 else discord.Color.orange() if cpu_temp >= 60 else discord.Color.green()
+    else:
+        color = discord.Color.blurple()
+
+    em = discord.Embed(title="🍓 Pi Live Monitor", color=color, timestamp=datetime.datetime.now(timezone.utc))
+    em.add_field(name="🌡️ CPU Temp",  value=f"`{cpu_temp}°C`",                        inline=True)
+    em.add_field(name="🎮 GPU Temp",  value=f"`{gpu_temp}`",                           inline=True)
+    em.add_field(name="⚡ CPU Usage", value=f"`{cpu_pct}%`",                           inline=True)
+    em.add_field(name="🧠 RAM",       value=f"`{ram_used}/{ram_tot} GB ({ram_pct}%)`", inline=False)
+    em.add_field(name="💾 Disk Free", value=f"`{disk_free} GB ({disk_pct}% used)`",    inline=False)
+    em.add_field(name="⏱️ Uptime",    value=f"`{uptime}`",                             inline=True)
+    if throttled:
+        em.add_field(name="⚠️ Throttled", value="`Yes — check cooling`",              inline=True)
+    em.set_footer(text=f"Refreshes every 5s · Last update {now}")
+    return em
+
+
+class LivePiView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=180)
+        self._task: asyncio.Task | None = None
+
+    def set_task(self, task: asyncio.Task):
+        self._task = task
+
+    async def on_timeout(self):
+        if self._task:
+            self._task.cancel()
+
+    @discord.ui.button(label="⏹ Stop", style=discord.ButtonStyle.danger)
+    async def stop_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if self._task:
+            self._task.cancel()
+        button.disabled = True
+        em = _make_pi_embed()
+        em.set_footer(text="Monitoring stopped.")
+        await interaction.response.edit_message(embed=em, view=self)
+
+
+@tree.command(name="live-pi", description="Live Raspberry Pi hardware monitor — refreshes every 5s")
+async def slash_live_pi(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    view = LivePiView()
+    await interaction.response.send_message(embed=_make_pi_embed(), view=view, ephemeral=True)
+
+    async def _refresh_loop():
+        try:
+            while True:
+                await asyncio.sleep(5)
+                try:
+                    await interaction.edit_original_response(embed=_make_pi_embed(), view=view)
+                except Exception:
+                    break
+        except asyncio.CancelledError:
+            pass
+
+    task = asyncio.create_task(_refresh_loop())
+    view.set_task(task)
+
+
 @tree.command(name="fortune-100", description="Browse unreviewed internships from Fortune 100 companies")
 async def slash_fortune100(interaction: discord.Interaction):
     if not _owner_only(interaction):

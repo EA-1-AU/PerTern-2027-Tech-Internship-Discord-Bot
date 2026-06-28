@@ -68,6 +68,7 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 | `/check` | Trigger a manual scan immediately |
 | `/status` | Bot health — scan stats, job counts, company error report, and live Pi hardware stats (CPU temp, RAM, disk, uptime) |
 | `/version` | Current version, last scan time, new jobs found, and bot uptime |
+| `/live-pi` | Live Raspberry Pi hardware monitor — CPU temp, GPU temp, RAM, disk, uptime, refreshing every 5 seconds |
 | `/log` | Downloads a single report file — last 50 log lines and the full company error/deactivation table combined |
 | `/clear-dm` | Delete all bot messages from your DMs for a clean slate |
 
