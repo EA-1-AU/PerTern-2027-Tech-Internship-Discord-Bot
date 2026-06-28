@@ -528,6 +528,7 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
 class BrowseView(discord.ui.View):
     """
     Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next | ••• More
+    Row 1: 🤖 Match
     Auto-deletes after 3 minutes of inactivity.
     """
 
@@ -585,6 +586,29 @@ class BrowseView(discord.ui.View):
         status = (uj or {}).get("status", "")
         em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
         await interaction.response.edit_message(embed=em, view=MoreView(self.job, message=self.message))
+
+    @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.secondary, row=1)
+    async def match_btn_browse(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        loop = asyncio.get_event_loop()
+        job  = self.job
+        desc = await loop.run_in_executor(None, lambda: fetch_job_description(job))
+        if not desc:
+            desc = job.get("description", "")
+        try:
+            result, footer = await loop.run_in_executor(None, lambda: _claude_match(job, desc))
+        except Exception as e:
+            await interaction.followup.send(f"❌ Claude API error: `{e}`", ephemeral=True)
+            return
+        color = discord.Color.green() if "YES" in result else discord.Color.red()
+        em = discord.Embed(
+            title=f"🤖 AI Match — {job.get('title','')}",
+            description=result,
+            color=color,
+            url=job.get("url") or None,
+        )
+        em.set_footer(text=footer)
+        await interaction.followup.send(embed=em, ephemeral=True)
 
 
 class MoreView(discord.ui.View):
@@ -1260,8 +1284,9 @@ def _claude_match(job: dict, description: str) -> str:
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read())
     raw        = data["content"][0]["text"].strip()
-    in_tokens  = data.get("usage", {}).get("input_tokens", 0)
-    out_tokens = data.get("usage", {}).get("output_tokens", 0)
+    usage      = data.get("usage", {})
+    in_tokens  = usage.get("input_tokens", 0)
+    out_tokens = usage.get("output_tokens", 0)
 
     # Haiku pricing: $0.80/M input, $4.00/M output
     cost = (in_tokens * 0.0000008) + (out_tokens * 0.000004)
@@ -1278,7 +1303,7 @@ def _claude_match(job: dict, description: str) -> str:
         verdict = "🤷 UNCLEAR"
 
     text    = f"**{verdict}**\n{reason}"
-    footer  = f"claude-haiku-4-5 · {in_tokens} in / {out_tokens} out tokens · ~${cost:.5f}"
+    footer  = f"claude-haiku-4-5 · {in_tokens}in/{out_tokens}out tokens · ~${cost:.5f}"
     return text, footer
 
 
