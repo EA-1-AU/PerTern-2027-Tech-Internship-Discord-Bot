@@ -1228,32 +1228,21 @@ def _ollama_match(job: dict, description: str) -> str:
     company  = job.get("company", "Unknown Company")
     location = job.get("location", "")
 
-    prompt = f"""You are a career advisor helping a student evaluate internship opportunities.
+    # Keep prompt short so tinyllama finishes in reasonable time on Pi
+    resume_short = resume[:800]
+    desc_short   = description[:400] if description else "No description available."
 
-RESUME:
-{resume}
-
-JOB POSTING:
-Title: {title}
-Company: {company}
-Location: {location}
-Description:
-{description[:3000] if description else "No description available."}
-
-Analyze how well this internship matches the student's resume. Be concise and direct.
-Reply in this exact format:
-
-MATCH SCORE: X/10
-VERDICT: (Strong Match / Good Match / Weak Match / Not a Match)
-
-WHY IT FITS:
-- (bullet point)
-- (bullet point)
-
-WATCH OUT FOR:
-- (bullet point)
-
-RECOMMENDATION: (one sentence — should they apply?)"""
+    prompt = (
+        f"You are a career advisor. Rate this internship for the student in 4 lines max.\n"
+        f"Student skills: {resume_short}\n"
+        f"Job: {title} at {company} ({location})\n"
+        f"Description: {desc_short}\n"
+        f"Reply ONLY in this format:\n"
+        f"SCORE: X/10\n"
+        f"VERDICT: Strong/Good/Weak/No Match\n"
+        f"FITS: one sentence why\n"
+        f"APPLY: yes or no and one reason"
+    )
 
     payload = json.dumps({
         "model":  OLLAMA_MODEL,
@@ -1267,7 +1256,7 @@ RECOMMENDATION: (one sentence — should they apply?)"""
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=300) as resp:
         data = json.loads(resp.read())
     return data.get("response", "No response from Ollama.").strip()
 
