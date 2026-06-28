@@ -689,7 +689,7 @@ class MoreView(discord.ui.View):
             result = await loop.run_in_executor(None, lambda: _claude_match(job, desc))
         except Exception as e:
             await interaction.followup.send(
-                f"❌ Ollama error: `{e}`\nMake sure Ollama is running: `ollama serve`",
+                f"❌ Claude API error: `{e}`",
                 ephemeral=True,
             )
             return
@@ -700,7 +700,7 @@ class MoreView(discord.ui.View):
             color=discord.Color.green() if "Strong" in result or "Good" in result else discord.Color.orange(),
             url=job.get("url") or None,
         )
-        em.set_footer(text=f"claude-haiku · {job.get('company','')}")
+        em.set_footer(text=f"claude-haiku-4-5 · {job.get('company','')}")
         await interaction.followup.send(embed=em, ephemeral=True)
 
 
@@ -1231,7 +1231,7 @@ def _claude_match(job: dict, description: str) -> str:
     desc     = description[:2000] if description else "No description available."
 
     payload = json.dumps({
-        "model": "claude-haiku-4-5-20251001",
+        "model": "claude-haiku-4-5",
         "max_tokens": 100,
         "messages": [{
             "role": "user",
