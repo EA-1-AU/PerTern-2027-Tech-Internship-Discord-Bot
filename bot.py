@@ -686,7 +686,7 @@ class MoreView(discord.ui.View):
             desc = job.get("description", "")
 
         try:
-            result = await loop.run_in_executor(None, lambda: _claude_match(job, desc))
+            result, footer = await loop.run_in_executor(None, lambda: _claude_match(job, desc))
         except Exception as e:
             await interaction.followup.send(
                 f"❌ Claude API error: `{e}`",
@@ -694,13 +694,14 @@ class MoreView(discord.ui.View):
             )
             return
 
+        color = discord.Color.green() if "YES" in result else discord.Color.red()
         em = discord.Embed(
             title=f"🤖 AI Match — {job.get('title','')}",
             description=result,
-            color=discord.Color.green() if "Strong" in result or "Good" in result else discord.Color.orange(),
+            color=color,
             url=job.get("url") or None,
         )
-        em.set_footer(text=f"claude-haiku-4-5 · {job.get('company','')}")
+        em.set_footer(text=footer)
         await interaction.followup.send(embed=em, ephemeral=True)
 
 
@@ -1221,9 +1222,9 @@ def _claude_match(job: dict, description: str) -> str:
     import urllib.request
     resume = _load_resume()
     if not resume:
-        return "❌ No resume found. Add your resume text to `resume.txt` in the bot folder."
+        return "❌ No resume found. Add your resume text to `resume.txt` in the bot folder.", ""
     if not ANTHROPIC_KEY:
-        return "❌ ANTHROPIC_API_KEY not set in .env"
+        return "❌ ANTHROPIC_API_KEY not set in .env", ""
 
     title    = job.get("title", "Unknown Role")
     company  = job.get("company", "Unknown Company")
@@ -1258,7 +1259,12 @@ def _claude_match(job: dict, description: str) -> str:
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read())
-    raw = data["content"][0]["text"].strip()
+    raw        = data["content"][0]["text"].strip()
+    in_tokens  = data.get("usage", {}).get("input_tokens", 0)
+    out_tokens = data.get("usage", {}).get("output_tokens", 0)
+
+    # Haiku pricing: $0.80/M input, $4.00/M output
+    cost = (in_tokens * 0.0000008) + (out_tokens * 0.000004)
 
     lines = [l.strip() for l in raw.splitlines() if l.strip()]
     verdict_line = lines[0].upper() if lines else ""
@@ -1271,7 +1277,9 @@ def _claude_match(job: dict, description: str) -> str:
     else:
         verdict = "🤷 UNCLEAR"
 
-    return f"**{verdict}**\n{reason}"
+    text    = f"**{verdict}**\n{reason}"
+    footer  = f"claude-haiku-4-5 · {in_tokens} in / {out_tokens} out tokens · ~${cost:.5f}"
+    return text, footer
 
 
 def _pi_stats() -> dict:
