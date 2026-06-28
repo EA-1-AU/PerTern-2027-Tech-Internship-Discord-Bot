@@ -48,8 +48,10 @@ Tap **••• More** to expand:
 
 ```
 🗣️ Interview  |  🎉 Offer  |  ❌ Rejected  |  💤 Snooze  |  ← Back
-🔗 Copy Link  |  ⭐ Priority  |  📄 Details
+🔗 Copy Link  |  ⭐ Priority  |  📄 Details  |  🤖 Match
 ```
+
+**🤖 Match** runs the job description against your `resume.txt` using a local Ollama model and returns a private match score, reasons it fits, and a one-line recommendation — all ephemeral.
 
 The browse session **auto-deletes after 3 minutes** of inactivity to keep your DMs clean. The summary embed **updates automatically** after every job you review so your counts stay current.
 

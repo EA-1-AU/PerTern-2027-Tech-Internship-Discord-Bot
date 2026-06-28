@@ -1,6 +1,7 @@
 .env
 *.db
 *.log
+resume.txt
 __pycache__/
 *.pyc
 *.pyo

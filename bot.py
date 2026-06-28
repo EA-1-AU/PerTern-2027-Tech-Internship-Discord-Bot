@@ -12,6 +12,7 @@ Scrapes 310+ companies and DMs matching internships directly to you.
 
 import asyncio
 import datetime
+import json
 import logging
 import os
 import re
@@ -45,7 +46,10 @@ TOKEN          = os.getenv("DISCORD_TOKEN", "")
 MY_USER_ID     = int(os.getenv("MY_DISCORD_USER_ID", "0"))
 SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
 DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
-REQUIRE_SALARY = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
+REQUIRE_SALARY  = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
+OLLAMA_URL      = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
+_RESUME_PATH    = os.path.join(os.path.dirname(__file__), "resume.txt")
 
 # ── Personal filter ───────────────────────────────────────────────────────────
 MY_CATEGORIES = {
@@ -671,6 +675,35 @@ class MoreView(discord.ui.View):
         )
         await interaction.followup.send(embed=em, ephemeral=True)
 
+    @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.secondary, row=1)
+    async def match_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(thinking=True, ephemeral=True)
+        loop = asyncio.get_event_loop()
+        job  = self.job
+
+        # fetch description first
+        desc = await loop.run_in_executor(None, lambda: fetch_job_description(job))
+        if not desc:
+            desc = job.get("description", "")
+
+        try:
+            result = await loop.run_in_executor(None, lambda: _ollama_match(job, desc))
+        except Exception as e:
+            await interaction.followup.send(
+                f"❌ Ollama error: `{e}`\nMake sure Ollama is running: `ollama serve`",
+                ephemeral=True,
+            )
+            return
+
+        em = discord.Embed(
+            title=f"🤖 AI Match — {job.get('title','')}",
+            description=result,
+            color=discord.Color.green() if "Strong" in result or "Good" in result else discord.Color.orange(),
+            url=job.get("url") or None,
+        )
+        em.set_footer(text=f"{OLLAMA_MODEL} · {job.get('company','')}")
+        await interaction.followup.send(embed=em, ephemeral=True)
+
 
 # ── Category select dropdown ──────────────────────────────────────────────────
 
@@ -1095,6 +1128,69 @@ async def slash_fortune100(interaction: discord.Interaction):
     view = BrowseView(job)
     await interaction.response.send_message(embed=em, view=view, ephemeral=True)
     view.message = await interaction.original_response()
+
+
+def _load_resume() -> str:
+    try:
+        with open(_RESUME_PATH, encoding="utf-8") as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return ""
+
+
+def _ollama_match(job: dict, description: str) -> str:
+    """Send job + resume to Ollama and return a match analysis string."""
+    import urllib.request
+    resume = _load_resume()
+    if not resume:
+        return "❌ No resume found. Add your resume text to `resume.txt` in the bot folder."
+
+    title    = job.get("title", "Unknown Role")
+    company  = job.get("company", "Unknown Company")
+    location = job.get("location", "")
+
+    prompt = f"""You are a career advisor helping a student evaluate internship opportunities.
+
+RESUME:
+{resume}
+
+JOB POSTING:
+Title: {title}
+Company: {company}
+Location: {location}
+Description:
+{description[:3000] if description else "No description available."}
+
+Analyze how well this internship matches the student's resume. Be concise and direct.
+Reply in this exact format:
+
+MATCH SCORE: X/10
+VERDICT: (Strong Match / Good Match / Weak Match / Not a Match)
+
+WHY IT FITS:
+- (bullet point)
+- (bullet point)
+
+WATCH OUT FOR:
+- (bullet point)
+
+RECOMMENDATION: (one sentence — should they apply?)"""
+
+    payload = json.dumps({
+        "model":  OLLAMA_MODEL,
+        "prompt": prompt,
+        "stream": False,
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{OLLAMA_URL}/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        data = json.loads(resp.read())
+    return data.get("response", "No response from Ollama.").strip()
 
 
 def _pi_stats() -> dict:
