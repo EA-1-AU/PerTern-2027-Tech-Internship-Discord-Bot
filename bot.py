@@ -1258,14 +1258,15 @@ def _claude_match(job: dict, description: str) -> str:
 
     payload = json.dumps({
         "model": "claude-haiku-4-5",
-        "max_tokens": 100,
+        "max_tokens": 120,
         "messages": [{
             "role": "user",
             "content": (
                 f"You are a career advisor. Based on this student's resume and the job posting, "
                 f"should they apply? Reply with ONLY:\n"
                 f"Line 1: YES or NO\n"
-                f"Line 2: One sentence reason (max 20 words).\n\n"
+                f"Line 2: One sentence reason (max 20 words).\n"
+                f"Line 3: TERM: when in 2027 (e.g. Summer 2027, Spring 2027) or NOT 2027 if not a 2027 internship.\n\n"
                 f"RESUME:\n{resume[:1500]}\n\n"
                 f"JOB: {title} at {company} ({location})\n{desc}"
             ),
@@ -1295,6 +1296,7 @@ def _claude_match(job: dict, description: str) -> str:
     lines = [l.strip() for l in raw.splitlines() if l.strip()]
     verdict_line = lines[0].upper() if lines else ""
     reason       = lines[1] if len(lines) > 1 else ""
+    term_line    = lines[2] if len(lines) > 2 else ""
 
     if "YES" in verdict_line:
         verdict = "✅ YES"
@@ -1303,7 +1305,15 @@ def _claude_match(job: dict, description: str) -> str:
     else:
         verdict = "🤷 UNCLEAR"
 
-    text    = f"**{verdict}**\n{reason}"
+    term_str = ""
+    if term_line:
+        term_clean = term_line.replace("TERM:", "").replace("Line 3:", "").strip()
+        if "NOT 2027" in term_clean.upper():
+            term_str = "\n⚠️ May not be a 2027 internship"
+        else:
+            term_str = f"\n📅 {term_clean}"
+
+    text    = f"**{verdict}**\n{reason}{term_str}"
     footer  = f"claude-haiku-4-5 · {in_tokens}in/{out_tokens}out tokens · ~${cost:.5f}"
     return text, footer
 
