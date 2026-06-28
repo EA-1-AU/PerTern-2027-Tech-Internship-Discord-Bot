@@ -527,8 +527,7 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
 
 class BrowseView(discord.ui.View):
     """
-    Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next | ••• More
-    Row 1: 🤖 Match
+    Row 0: ◀ Prev | ✅ Applied | ⏭️ Skip | ▶ Next | 🤖 Match | ••• More
     Auto-deletes after 3 minutes of inactivity.
     """
 
@@ -579,15 +578,7 @@ class BrowseView(discord.ui.View):
     async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self._go(interaction, _browse["index"] + 1)
 
-    @discord.ui.button(label="••• More", style=discord.ButtonStyle.secondary, row=0)
-    async def more_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        uid    = str(MY_USER_ID)
-        uj     = db.get_user_job(uid, self.job.get("job_id", ""))
-        status = (uj or {}).get("status", "")
-        em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
-        await interaction.response.edit_message(embed=em, view=MoreView(self.job, message=self.message))
-
-    @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.primary, row=0)
     async def match_btn_browse(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         loop = asyncio.get_event_loop()
@@ -609,6 +600,15 @@ class BrowseView(discord.ui.View):
         )
         em.set_footer(text=footer)
         await interaction.followup.send(embed=em, ephemeral=True)
+
+    @discord.ui.button(label="••• More", style=discord.ButtonStyle.secondary, row=0)
+    async def more_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        uid    = str(MY_USER_ID)
+        uj     = db.get_user_job(uid, self.job.get("job_id", ""))
+        status = (uj or {}).get("status", "")
+        em     = _make_job_embed(self.job, index=_browse["index"], total=len(_browse["jobs"]), status=status)
+        await interaction.response.edit_message(embed=em, view=MoreView(self.job, message=self.message))
+
 
 
 class MoreView(discord.ui.View):
