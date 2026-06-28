@@ -47,8 +47,7 @@ MY_USER_ID     = int(os.getenv("MY_DISCORD_USER_ID", "0"))
 SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
 DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
 REQUIRE_SALARY  = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
-OLLAMA_URL      = os.getenv("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL    = os.getenv("OLLAMA_MODEL", "tinyllama")
+ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
 _RESUME_PATH    = os.path.join(os.path.dirname(__file__), "resume.txt")
 
 # ── Personal filter ───────────────────────────────────────────────────────────
@@ -687,7 +686,7 @@ class MoreView(discord.ui.View):
             desc = job.get("description", "")
 
         try:
-            result = await loop.run_in_executor(None, lambda: _ollama_match(job, desc))
+            result = await loop.run_in_executor(None, lambda: _claude_match(job, desc))
         except Exception as e:
             await interaction.followup.send(
                 f"❌ Ollama error: `{e}`\nMake sure Ollama is running: `ollama serve`",
@@ -701,7 +700,7 @@ class MoreView(discord.ui.View):
             color=discord.Color.green() if "Strong" in result or "Good" in result else discord.Color.orange(),
             url=job.get("url") or None,
         )
-        em.set_footer(text=f"{OLLAMA_MODEL} · {job.get('company','')}")
+        em.set_footer(text=f"claude-haiku · {job.get('company','')}")
         await interaction.followup.send(embed=em, ephemeral=True)
 
 
@@ -1217,57 +1216,60 @@ def _load_resume() -> str:
         return ""
 
 
-def _ollama_match(job: dict, description: str) -> str:
-    """Send job + resume to Ollama and return a match analysis string."""
+def _claude_match(job: dict, description: str) -> str:
+    """Send job + resume to Claude API and return a YES/NO match result."""
     import urllib.request
     resume = _load_resume()
     if not resume:
         return "❌ No resume found. Add your resume text to `resume.txt` in the bot folder."
+    if not ANTHROPIC_KEY:
+        return "❌ ANTHROPIC_API_KEY not set in .env"
 
     title    = job.get("title", "Unknown Role")
     company  = job.get("company", "Unknown Company")
     location = job.get("location", "")
-
-    resume_short = resume[:800]
-    desc_short   = description[:400] if description else "No description available."
-
-    prompt = (
-        f"You are a career advisor. Answer in exactly 2 lines, no more.\n"
-        f"Line 1: YES or NO\n"
-        f"Line 2: One sentence reason.\n\n"
-        f"Student: {resume_short}\n"
-        f"Job: {title} at {company}. {desc_short}\n\n"
-        f"Should this student apply?"
-    )
+    desc     = description[:2000] if description else "No description available."
 
     payload = json.dumps({
-        "model":  OLLAMA_MODEL,
-        "prompt": prompt,
-        "stream": False,
+        "model": "claude-haiku-4-5-20251001",
+        "max_tokens": 100,
+        "messages": [{
+            "role": "user",
+            "content": (
+                f"You are a career advisor. Based on this student's resume and the job posting, "
+                f"should they apply? Reply with ONLY:\n"
+                f"Line 1: YES or NO\n"
+                f"Line 2: One sentence reason (max 20 words).\n\n"
+                f"RESUME:\n{resume[:1500]}\n\n"
+                f"JOB: {title} at {company} ({location})\n{desc}"
+            ),
+        }],
     }).encode()
 
     req = urllib.request.Request(
-        f"{OLLAMA_URL}/api/generate",
+        "https://api.anthropic.com/v1/messages",
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type":      "application/json",
+            "x-api-key":         ANTHROPIC_KEY,
+            "anthropic-version": "2023-06-01",
+        },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read())
-    raw = data.get("response", "").strip()
+    raw = data["content"][0]["text"].strip()
 
-    # Extract YES/NO regardless of how tinyllama formatted it
-    upper = raw.upper()
-    if "YES" in upper:
+    lines = [l.strip() for l in raw.splitlines() if l.strip()]
+    verdict_line = lines[0].upper() if lines else ""
+    reason       = lines[1] if len(lines) > 1 else ""
+
+    if "YES" in verdict_line:
         verdict = "✅ YES"
-    elif "NO" in upper:
+    elif "NO" in verdict_line:
         verdict = "❌ NO"
     else:
         verdict = "🤷 UNCLEAR"
-
-    # Grab the first real sentence as the reason
-    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", raw) if len(s.strip()) > 10]
-    reason = sentences[0] if sentences else raw[:200]
 
     return f"**{verdict}**\n{reason}"
 
@@ -1673,7 +1675,6 @@ async def on_ready():
     snooze_check_loop.start()
     followup_reminder_loop.start()
     status_rotation_loop.start()
-    ollama_keepalive_loop.start()
 
 
 _STATUS_ROTATION = [
@@ -1719,28 +1720,6 @@ async def status_rotation_loop():
     )
     _status_index += 1
 
-
-@tasks.loop(minutes=5)
-async def ollama_keepalive_loop():
-    """Ping Ollama every 5 minutes to keep the model warm in RAM."""
-    try:
-        import urllib.request
-        payload = json.dumps({
-            "model":      OLLAMA_MODEL,
-            "prompt":     "hi",
-            "stream":     False,
-            "keep_alive": "10m",
-        }).encode()
-        req = urllib.request.Request(
-            f"{OLLAMA_URL}/api/generate",
-            data=payload,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=30) as _:
-            pass
-    except Exception:
-        pass
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
