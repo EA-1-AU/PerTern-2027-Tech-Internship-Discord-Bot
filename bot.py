@@ -315,7 +315,18 @@ def _is_internship(title: str) -> bool:
         return False
     if _TITLE_BLACKLIST_RE.search(title):
         return False
-    return bool(re.search(r'\bintern(ship)?\b', title, re.IGNORECASE))
+    if re.search(r'\bintern(ship)?\b', title, re.IGNORECASE):
+        return True
+    # Co-op positions are internship-equivalent
+    if re.search(r'\bco[\-\s]?op\b', title, re.IGNORECASE):
+        return True
+    # Finance/banking "Summer/Winter/Spring/Fall Analyst/Associate" programs
+    if re.search(r'\b(summer|winter|spring|fall)\s+(analyst|associate|engineer|developer)\b', title, re.IGNORECASE):
+        return True
+    # "Extern", "apprentice", "trainee" programs
+    if re.search(r'\b(extern(ship)?|apprentice(ship)?|trainee)\b', title, re.IGNORECASE):
+        return True
+    return False
 
 
 def _2027_filter(job: dict) -> bool:
@@ -816,6 +827,14 @@ async def _update_summary(new_count: int = 0):
 
 # ── Core scan ─────────────────────────────────────────────────────────────────
 
+async def _delete_after(msg: discord.Message, delay: float):
+    await asyncio.sleep(delay)
+    try:
+        await msg.delete()
+    except Exception:
+        pass
+
+
 async def _get_dm() -> discord.DMChannel:
     user = await client.fetch_user(MY_USER_ID)
     return await user.create_dm()
@@ -958,7 +977,8 @@ async def _send_weekly_stats():
         )
         em.set_footer(text="PerTern Weekly · Every Sunday")
         dm = await _get_dm()
-        await dm.send(embed=em)
+        msg = await dm.send(embed=em)
+        asyncio.create_task(_delete_after(msg, 3600))
     except Exception as e:
         log.warning("Weekly stats error: %s", e)
 
