@@ -1399,6 +1399,79 @@ async def slash_version(interaction: discord.Interaction):
     await interaction.response.send_message(embed=em, ephemeral=True)
 
 
+@tree.command(name="status", description="Bot health — active companies, errors, scan info")
+async def slash_status(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+
+    health     = db.get_company_health()
+    last_scan  = db.get_bot_state("last_scan_time") or "Never"
+    last_count = db.get_bot_state("last_scan_new")  or "0"
+
+    # Next scan estimate
+    if scan_loop.next_iteration:
+        nxt = scan_loop.next_iteration.astimezone(timezone.utc)
+        now = datetime.datetime.now(timezone.utc)
+        mins = max(0, int((nxt - now).total_seconds() // 60))
+        next_str = f"~{mins}m"
+    else:
+        next_str = "unknown"
+
+    active     = health["active"]
+    deactivated= health["deactivated"]
+    erroring   = health["erroring"]
+    top_errors = health["top_errors"]
+
+    # Traffic light
+    if erroring == 0 and deactivated == 0:
+        status_icon = "🟢"
+    elif deactivated > 20 or erroring > 10:
+        status_icon = "🔴"
+    else:
+        status_icon = "🟡"
+
+    em = discord.Embed(
+        title=f"{status_icon} PerTern Health",
+        color=discord.Color.green() if status_icon == "🟢" else
+              discord.Color.red()   if status_icon == "🔴" else
+              discord.Color.yellow(),
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+    em.add_field(name="✅ Active",      value=str(active),      inline=True)
+    em.add_field(name="⚠️ Erroring",   value=str(erroring),    inline=True)
+    em.add_field(name="❌ Deactivated", value=str(deactivated), inline=True)
+    em.add_field(name="Last Scan",      value=last_scan,        inline=True)
+    em.add_field(name="New Jobs",       value=last_count,       inline=True)
+    em.add_field(name="Next Scan",      value=next_str,         inline=True)
+
+    if top_errors:
+        lines = "\n".join(f"`{r['name']}` — {r['fail_count']}x" for r in top_errors)
+        em.add_field(name="Top Failing Companies", value=lines, inline=False)
+
+    em.set_footer(text=f"Scan interval: {SCAN_INTERVAL}m • Deactivates at 6 consecutive failures")
+    await interaction.followup.send(embed=em, ephemeral=True)
+
+
+@tree.command(name="reactivate", description="Reactivate a deactivated company and reset its failure count")
+@app_commands.describe(company="Company name (partial match OK, e.g. 'Boeing')")
+async def slash_reactivate(interaction: discord.Interaction, company: str):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    count = db.reactivate_company_by_name(company)
+    if count:
+        await interaction.response.send_message(
+            f"✅ Reactivated **{count}** compan{'y' if count == 1 else 'ies'} matching `{company}`.",
+            ephemeral=True,
+        )
+    else:
+        await interaction.response.send_message(
+            f"❌ No company found matching `{company}`. Check the name and try again.",
+            ephemeral=True,
+        )
+
+
 @tree.command(name="check", description="Trigger a manual scan — all companies or just one")
 @app_commands.describe(company="Optional: name of a specific company to scan (e.g. Google)")
 async def slash_check(interaction: discord.Interaction, company: str = ""):

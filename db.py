@@ -194,7 +194,21 @@ def upsert_company(name, source, slug=None, url=None, priority=0):
         cur.execute(
             """INSERT INTO companies (name, source, slug, url, active, priority) VALUES (?, ?, ?, ?, 1, ?)
                ON CONFLICT(name, source) DO UPDATE SET
-               slug=excluded.slug, url=excluded.url, active=1, priority=excluded.priority""",
+               slug=excluded.slug,
+               url=excluded.url,
+               priority=excluded.priority,
+               active=CASE
+                 WHEN (IFNULL(excluded.slug,'') != IFNULL(companies.slug,''))
+                   OR (IFNULL(excluded.url,'')  != IFNULL(companies.url,''))
+                 THEN 1
+                 ELSE companies.active
+               END,
+               fail_count=CASE
+                 WHEN (IFNULL(excluded.slug,'') != IFNULL(companies.slug,''))
+                   OR (IFNULL(excluded.url,'')  != IFNULL(companies.url,''))
+                 THEN 0
+                 ELSE companies.fail_count
+               END""",
             (name, source, slug, url, priority),
         )
 
@@ -224,7 +238,7 @@ def record_company_failure(name, source):
         cur.execute("SELECT fail_count FROM companies WHERE name=? AND source=?", (name, source))
         row = cur.fetchone()
         count = row[0] if row else 0
-        if count >= 3:
+        if count >= 6:
             cur.execute("UPDATE companies SET active=0 WHERE name=? AND source=?", (name, source))
             return count, True
         return count, False
@@ -250,6 +264,27 @@ def reactivate_company_by_name(name):
             (f"%{name}%",),
         )
         return cur.rowcount
+
+
+def get_company_health():
+    """Return a dict with company health stats for /status."""
+    with db_cursor() as cur:
+        cur.execute("SELECT COUNT(*) FROM companies WHERE active=1")
+        active = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM companies WHERE active=0 AND fail_count >= 6")
+        deactivated = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*) FROM companies WHERE active=1 AND fail_count > 0")
+        erroring = cur.fetchone()[0]
+        cur.execute(
+            "SELECT name, fail_count FROM companies WHERE fail_count > 0 ORDER BY fail_count DESC LIMIT 8"
+        )
+        top_errors = [dict(r) for r in cur.fetchall()]
+    return {
+        "active": active,
+        "deactivated": deactivated,
+        "erroring": erroring,
+        "top_errors": top_errors,
+    }
 
 
 def get_broken_companies():
