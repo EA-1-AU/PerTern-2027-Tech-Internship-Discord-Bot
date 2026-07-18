@@ -761,7 +761,7 @@ class MoreView(discord.ui.View):
 
     @discord.ui.button(label="📄 Details", style=discord.ButtonStyle.secondary, row=1)
     async def details_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(thinking=True)
+        await interaction.response.defer(thinking=True, ephemeral=True)
         loop = asyncio.get_event_loop()
         job  = self.job
         desc = await loop.run_in_executor(None, lambda: fetch_job_description(job))
