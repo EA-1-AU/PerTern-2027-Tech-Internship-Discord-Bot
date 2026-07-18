@@ -401,24 +401,65 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
     return em
 
 
+_EMPTY_QUOTES = [
+    "\"The secret of getting ahead is getting started.\" — Mark Twain",
+    "\"Every expert was once a beginner.\" — Helen Hayes",
+    "\"Opportunities don't happen. You create them.\" — Chris Grosser",
+    "\"Success is the sum of small efforts, repeated day in and day out.\" — R. Collier",
+    "\"The best time to plant a tree was 20 years ago. The second best time is now.\" — Proverb",
+    "\"Your future is created by what you do today, not tomorrow.\" — Robert Kiyosaki",
+    "\"Don't watch the clock; do what it does. Keep going.\" — Sam Levenson",
+    "\"It always seems impossible until it's done.\" — Nelson Mandela",
+    "\"Believe you can and you're halfway there.\" — Theodore Roosevelt",
+    "\"The harder I work, the luckier I get.\" — Samuel Goldwyn",
+]
+
+
 def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Embed:
-    total = sum(cats.values())
-    lines = [f"{cat} — **{n}** unreviewed" for cat, n in cats.items()]
-    if not lines:
-        desc = "Nothing unreviewed right now. Check back after the next scan!"
-    else:
-        desc = "\n".join(lines)
-        if new_count:
-            desc = f"**+{new_count} new this scan**\n\n" + desc
-        desc += f"\n\n**{total} total unreviewed** — use the dropdown below to browse."
+    total      = sum(cats.values())
+    total_idx  = db.get_job_count()
+    applied    = len(db.get_user_jobs_by_status(str(MY_USER_ID), "applied"))
+    interviews = len(db.get_user_jobs_by_status(str(MY_USER_ID), "interview"))
+    offers     = len(db.get_user_jobs_by_status(str(MY_USER_ID), "offer"))
+
+    if not cats:
+        quote = _EMPTY_QUOTES[datetime.datetime.now().minute % len(_EMPTY_QUOTES)]
+        em = discord.Embed(
+            title="✨ You're all caught up!",
+            description=(
+                f"No unreviewed internships right now — new ones land every {SCAN_INTERVAL} minutes.\n\n"
+                f"*{quote}*"
+            ),
+            color=discord.Color.from_rgb(88, 101, 242),
+            timestamp=datetime.datetime.now(timezone.utc),
+        )
+        em.add_field(name="✅ Applied",    value=f"**{applied}**",    inline=True)
+        em.add_field(name="🗣️ Interview", value=f"**{interviews}**", inline=True)
+        em.add_field(name="🎉 Offer",     value=f"**{offers}**",     inline=True)
+        em.set_footer(text=f"PerTern · {total_idx:,} internships indexed · Scans every {SCAN_INTERVAL}min")
+        return em
+
+    lines = []
+    for cat, n in cats.items():
+        bar_filled = min(n, 10)
+        bar = "█" * bar_filled + "░" * (10 - bar_filled)
+        lines.append(f"{cat}\n`{bar}` **{n}**")
+
+    desc = "\n".join(lines)
+    if new_count:
+        desc = f"🆕 **+{new_count} new this scan!**\n\n" + desc
+    desc += f"\n\n**{total} unreviewed** · Pick a category below to start browsing."
 
     em = discord.Embed(
-        title="📋 PerTern — Internship Summary",
+        title="📋 PerTern — Internship Feed",
         description=desc,
         color=discord.Color.from_rgb(88, 101, 242),
         timestamp=datetime.datetime.now(timezone.utc),
     )
-    em.set_footer(text=f"PerTern · {db.get_job_count():,} total indexed · Scans every {SCAN_INTERVAL}min")
+    em.add_field(name="✅ Applied",    value=f"**{applied}**",    inline=True)
+    em.add_field(name="🗣️ Interview", value=f"**{interviews}**", inline=True)
+    em.add_field(name="🎉 Offer",     value=f"**{offers}**",     inline=True)
+    em.set_footer(text=f"PerTern · {total_idx:,} indexed · Scans every {SCAN_INTERVAL}min")
     return em
 
 
@@ -493,9 +534,15 @@ async def _advance_after_mark(interaction: discord.Interaction, marked_status: s
         next_idx += 1
 
     if next_idx >= len(jobs):
+        quote = _EMPTY_QUOTES[datetime.datetime.now().minute % len(_EMPTY_QUOTES)]
         em = discord.Embed(
-            title="✅ All done!",
-            description="You've reviewed all jobs in this category.\nCheck back after the next scan for new ones.\n\n*This message will disappear in 1 minute.*",
+            title="🎉 All caught up!",
+            description=(
+                f"You've reviewed everything in this category.\n"
+                f"New internships land every {SCAN_INTERVAL} minutes — check back soon!\n\n"
+                f"*{quote}*\n\n"
+                f"*This message disappears in 1 minute.*"
+            ),
             color=discord.Color.green(),
         )
         await interaction.response.edit_message(embed=em, view=None)
@@ -867,7 +914,7 @@ class CategorySelect(discord.ui.Select):
         status = (uj or {}).get("status","")
         cat_label = category or "All Categories"
         em = _make_job_embed(job, index=0, total=len(jobs), status=status)
-        em.description = f"Browsing: **{cat_label}** — {len(jobs)} jobs\nUse ◀ ▶ to navigate · Applied/Skip to mark"
+        em.description = f"📂 **{cat_label}** — {len(jobs)} unreviewed\n◀ ▶ to navigate · ✅ Applied · ⏭️ Skip · ••• More options"
 
         view = BrowseView(job)
         await interaction.response.send_message(embed=em, view=view, ephemeral=True)
@@ -1056,28 +1103,119 @@ async def _check_deadlines():
 async def _send_weekly_stats():
     try:
         uid        = str(MY_USER_ID)
-        total_jobs = db.get_job_count()
+        total_idx  = db.get_job_count()
         unreviewed = _db_total_unreviewed()
-        applied    = len(db.get_user_jobs_by_status(uid, "applied"))
-        interviews = len(db.get_user_jobs_by_status(uid, "interview"))
-        offers     = len(db.get_user_jobs_by_status(uid, "offer"))
+        applied    = db.get_user_jobs_by_status(uid, "applied",   limit=100)
+        interviews = db.get_user_jobs_by_status(uid, "interview", limit=100)
+        offers     = db.get_user_jobs_by_status(uid, "offer",     limit=100)
+        rejected   = db.get_user_jobs_by_status(uid, "rejected",  limit=100)
+
+        n_applied    = len(applied)
+        n_interviews = len(interviews)
+        n_offers     = len(offers)
+        n_rejected   = len(rejected)
+        n_total      = n_applied + n_interviews + n_offers + n_rejected
+
+        # Response rate
+        if n_applied > 0:
+            resp_rate = round((n_interviews + n_offers) / max(n_applied, 1) * 100)
+        else:
+            resp_rate = 0
+
+        # Pipeline progress bar
+        def _pct_bar(n: int, total: int, width: int = 8) -> str:
+            if total == 0:
+                return "░" * width
+            filled = round(n / total * width)
+            return "█" * filled + "░" * (width - filled)
+
+        # Motivational suffix based on pipeline state
+        if n_offers:
+            headline = "🎉 You have offers on the table — incredible work!"
+        elif n_interviews:
+            headline = "🔥 You're in interviews — keep that momentum going!"
+        elif n_applied >= 10:
+            headline = "💪 Strong volume — your next interview is coming!"
+        elif n_applied > 0:
+            headline = "🚀 Off to a solid start — keep applying!"
+        else:
+            headline = "✨ A new week, a fresh start — let's land that internship!"
+
+        week_str = datetime.datetime.now(timezone.utc).strftime("Week of %B %d, %Y")
 
         em = discord.Embed(
-            title="📊 Your Weekly PerTern Report",
-            description=(
-                f"**{total_jobs:,}** total internships indexed\n"
-                f"**{unreviewed:,}** waiting for your review\n\n"
-                f"**Your pipeline:**\n"
-                f"• ✅ Applied — **{applied}**\n"
-                f"• 🗣️ Interview — **{interviews}**\n"
-                f"• 🎉 Offer — **{offers}**\n\n"
-                "Keep pushing! 🚀"
-            ),
+            title="📊 PerTern Weekly Report",
+            description=f"**{week_str}**\n{headline}",
             color=discord.Color.gold(),
             timestamp=datetime.datetime.now(timezone.utc),
         )
-        em.set_footer(text="PerTern Weekly · Every Sunday")
-        dm = await _get_dm()
+
+        # Database snapshot
+        em.add_field(
+            name="🗄️ Database",
+            value=(
+                f"**{total_idx:,}** internships indexed\n"
+                f"**{unreviewed:,}** waiting for review"
+            ),
+            inline=True,
+        )
+
+        # Pipeline snapshot
+        em.add_field(
+            name="📂 Your Pipeline",
+            value=(
+                f"✅ Applied — **{n_applied}**\n"
+                f"🗣️ Interview — **{n_interviews}**\n"
+                f"🎉 Offer — **{n_offers}**\n"
+                f"❌ Rejected — **{n_rejected}**"
+            ),
+            inline=True,
+        )
+
+        # Response rate
+        em.add_field(
+            name="📈 Response Rate",
+            value=(
+                f"`{_pct_bar(n_interviews + n_offers, n_applied)}` **{resp_rate}%**\n"
+                f"{n_interviews + n_offers} of {n_applied} apps got a response"
+            ),
+            inline=False,
+        )
+
+        # Active interviews list (if any)
+        if interviews:
+            iv_list = "\n".join(
+                f"• **{j.get('company','')}** — {j.get('title','')[:40]}"
+                for j in interviews[:5]
+            )
+            if len(interviews) > 5:
+                iv_list += f"\n• *+{len(interviews)-5} more*"
+            em.add_field(name="🗣️ Active Interviews", value=iv_list, inline=False)
+
+        # Offers list (if any)
+        if offers:
+            of_list = "\n".join(
+                f"• **{j.get('company','')}** — {j.get('title','')[:40]}"
+                for j in offers[:3]
+            )
+            em.add_field(name="🎉 Offers in Hand", value=of_list, inline=False)
+
+        # Tip of the week
+        tips = [
+            "💡 **Tip:** Follow up on applications 10–14 days after submitting.",
+            "💡 **Tip:** Tailor your resume keywords to each job description.",
+            "💡 **Tip:** A warm referral can 3x your chances of getting an interview.",
+            "💡 **Tip:** Apply early — many companies fill roles weeks before the deadline.",
+            "💡 **Tip:** Research the team on LinkedIn before every interview.",
+            "💡 **Tip:** Send a thank-you email within 24 hours of any interview.",
+            "💡 **Tip:** GPA matters less than projects and internship experience.",
+        ]
+        tip = tips[datetime.datetime.now(timezone.utc).isocalendar()[1] % len(tips)]
+        em.add_field(name="​", value=tip, inline=False)
+
+        em.set_footer(text="PerTern Weekly · Every Sunday at 9 AM · Auto-deletes in 1 hour")
+
+        dm  = await _get_dm()
         msg = await dm.send(embed=em)
         asyncio.create_task(_delete_after(msg, 3600))
     except Exception as e:
@@ -1103,9 +1241,9 @@ async def daily_digest_loop():
         log.exception("Daily digest error")
 
 
-@tasks.loop(time=datetime.time(hour=14, minute=0, tzinfo=timezone.utc))
+@tasks.loop(time=datetime.time(hour=14, minute=0, tzinfo=timezone.utc))  # 9AM ET / 10AM EDT
 async def weekly_stats_loop():
-    if datetime.datetime.now(timezone.utc).weekday() == 6:
+    if datetime.datetime.now(timezone.utc).weekday() == 6:  # Sunday
         await _send_weekly_stats()
 
 
@@ -1199,16 +1337,80 @@ async def slash_version(interaction: discord.Interaction):
     await interaction.response.send_message(embed=em, ephemeral=True)
 
 
-@tree.command(name="check", description="Trigger a manual scan right now")
-async def slash_check(interaction: discord.Interaction):
+@tree.command(name="check", description="Trigger a manual scan — all companies or just one")
+@app_commands.describe(company="Optional: name of a specific company to scan (e.g. Google)")
+async def slash_check(interaction: discord.Interaction, company: str = ""):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
-    await interaction.response.send_message("🔍 Scanning now...", ephemeral=True)
-    count = await _run_scan(label="manual")
-    await interaction.followup.send(
-        f"Done — {'no new matches' if count == 0 else f'{count} new matches added to your summary'}.",
-        ephemeral=True,
-    )
+
+    if company:
+        # Single-company scan
+        await interaction.response.send_message(
+            f"🔍 Scanning **{company}**...", ephemeral=True
+        )
+        loop = asyncio.get_event_loop()
+
+        def _single_scan():
+            from scraper import run_all_scrapers
+            results: list[dict] = []
+            def _capture(comp_name: str, jobs: list[dict]):
+                if comp_name.lower() == company.lower():
+                    results.extend(jobs)
+            run_all_scrapers(on_batch=_capture)
+            return results
+
+        raw = await loop.run_in_executor(None, _single_scan)
+
+        # Filter and insert matching jobs
+        new_count = 0
+        for job in raw:
+            if not _is_internship(job.get("title", "")):
+                continue
+            if not _2027_filter(job):
+                continue
+            tag_job(job)
+            match, _ = _matches_me(job)
+            if not match:
+                continue
+            jid = job.get("job_id", "")
+            if jid in _seen_job_ids or db.job_exists(jid):
+                _seen_job_ids.add(jid)
+                continue
+            tkey = _title_key(job.get("company", ""), job.get("title", ""))
+            if tkey in _seen_title_keys:
+                continue
+            _seen_title_keys.add(tkey)
+            _seen_job_ids.add(jid)
+            db.insert_job(
+                jid,
+                job.get("company", ""), job.get("source", ""),
+                job.get("title", ""),   job.get("location", ""),
+                job.get("url", ""),
+                description=job.get("description", ""),
+                category=job.get("category"),
+                subcategory=job.get("subcategory"),
+                term=job.get("term"),
+                deadline=job.get("deadline"),
+                salary=job.get("salary"),
+            )
+            new_count += 1
+
+        if new_count:
+            await _update_summary(new_count=new_count)
+
+        found_msg = f"**{new_count} new match{'es' if new_count != 1 else ''}**" if new_count else "no new matches"
+        await interaction.followup.send(
+            f"✅ Scanned **{company}** — {len(raw)} jobs found, {found_msg}.",
+            ephemeral=True,
+        )
+    else:
+        # Full scan
+        await interaction.response.send_message("🔍 Scanning all companies...", ephemeral=True)
+        count = await _run_scan(label="manual")
+        await interaction.followup.send(
+            f"✅ Done — {'no new matches' if count == 0 else f'**{count}** new matches added to your summary'}.",
+            ephemeral=True,
+        )
 
 
 @tree.command(name="stats", description="Your application pipeline stats")
