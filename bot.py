@@ -2454,7 +2454,7 @@ async def on_ready():
         log.error("MY_DISCORD_USER_ID not set!"); return
     db.init_db()
     from seed_companies import seed
-    n = seed()
+    n, _ = seed()
     log.info("Seeded %d companies from CSV", n)
 
     try:
