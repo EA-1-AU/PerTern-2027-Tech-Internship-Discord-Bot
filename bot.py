@@ -543,14 +543,19 @@ def _weekly_goal_line(uid: str) -> str:
 
 
 def _next_scan_timestamp() -> str:
-    """Return a Discord relative timestamp string for the next scheduled scan, or scan-in-progress notice."""
+    """Return a Discord relative timestamp for the next scheduled scan, or scan-in-progress notice."""
     if _scan_lock.locked():
         return "⏳ Scan in progress…"
+    # Prefer the task's own next_iteration when available (post-first-run)
     nxt = scan_loop.next_iteration
-    if nxt is None:
-        return ""
-    ts = int(nxt.timestamp())
-    return f"<t:{ts}:R>"
+    if nxt is not None:
+        return f"<t:{int(nxt.timestamp())}:R>"
+    # Fallback: compute the next :00/:30 boundary ourselves (used during startup sleep)
+    now     = datetime.datetime.now(timezone.utc)
+    elapsed = (now.minute % SCAN_INTERVAL) * 60 + now.second
+    wait    = SCAN_INTERVAL * 60 - elapsed
+    nxt_dt  = now + datetime.timedelta(seconds=wait)
+    return f"<t:{int(nxt_dt.timestamp())}:R>"
 
 
 def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Embed:
