@@ -858,18 +858,10 @@ class PipelineView(discord.ui.View):
     Row 1: 🗣️ Interview | 🎉 Offer | ❌ Rejected | ↩️ Reopen
     """
 
-    def __init__(self, jobs: list[dict], index: int = 0, message: discord.Message | None = None):
-        super().__init__(timeout=180)
-        self.jobs    = jobs
-        self.index   = index
-        self.message = message
-
-    async def on_timeout(self):
-        if self.message:
-            try:
-                await self.message.delete()
-            except discord.NotFound:
-                pass
+    def __init__(self, jobs: list[dict], index: int = 0):
+        super().__init__(timeout=300)
+        self.jobs  = jobs
+        self.index = index
 
     def _current_job(self) -> dict:
         return self.jobs[self.index]
@@ -1987,13 +1979,9 @@ async def slash_pipeline(interaction: discord.Interaction):
     )
     await interaction.followup.send(embed=header_em, ephemeral=True)
 
-    # Send the first job as a browseable embed in DM
-    dm  = await _get_dm()
-    em  = _make_pipeline_embed(all_jobs[0], 0, len(all_jobs))
-    msg = await dm.send(embed=em, view=PipelineView(all_jobs, index=0))
-    # Attach message reference so the view can delete on timeout
-    view = PipelineView(all_jobs, index=0, message=msg)
-    await msg.edit(view=view)
+    # Send browse view as ephemeral so user can dismiss it when done
+    em = _make_pipeline_embed(all_jobs[0], 0, len(all_jobs))
+    await interaction.followup.send(embed=em, view=PipelineView(all_jobs, index=0), ephemeral=True)
 
 
 @tree.command(name="clear-dm", description="Delete all bot messages from your DMs (clean slate)")
