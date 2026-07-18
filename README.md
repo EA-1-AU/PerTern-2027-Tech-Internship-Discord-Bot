@@ -10,9 +10,9 @@
 
 **Your personal internship feed — delivered straight to your Discord DMs.**
 
-PerTern scrapes **427+ company career pages** every 10 minutes, filters for internships that match your background, and sends each new match directly to you via Discord DM. No server. No channels. Just you.
+PerTern scrapes **570+ company career pages** every 30 minutes, filters for internships that match your background, and sends each new match directly to you via Discord DM. No server. No channels. Just you.
 
-[![Version](https://img.shields.io/badge/version-1.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot)
+[![Version](https://img.shields.io/badge/version-1.1.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![discord.py](https://img.shields.io/badge/discord.py-2.x-5865F2?style=flat&logo=discord&logoColor=white)](https://discordpy.readthedocs.io/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org)
@@ -24,7 +24,7 @@ PerTern scrapes **427+ company career pages** every 10 minutes, filters for inte
 
 ## What PerTern does
 
-- **427+ companies scraped** every 10 minutes across Greenhouse, Lever, Ashby, SmartRecruiters, Workday, iCIMS, Oracle, ADP, custom career pages, and the SimplifyJobs GitHub feed
+- **570+ companies scraped** every 30 minutes across Greenhouse, Lever, Ashby, SmartRecruiters, Workday, iCIMS, Oracle, ADP, custom career pages, and the SimplifyJobs GitHub feed
 - **Personalized matching** — filters for roles aligned to your skills: Cybersecurity, Cloud/GCP, Data Analytics, Python, SQL, Linux, Network Security, IT Support, AI/ML
 - **Discord DMs only** — no server required, matches land directly in your inbox
 - **Deduplication** — never sends the same listing twice
@@ -48,10 +48,12 @@ Tap **••• More** to expand:
 
 ```
 🗣️ Interview  |  🎉 Offer  |  ❌ Rejected  |  💤 Snooze  |  ← Back
-🔗 Copy Link  |  ⭐ Priority  |  📄 Details  |  🤖 Match
+🔗 Copy Link  |  ⭐ Priority  |  📄 Details  |  🤖 Match  |  ⏰ Remind
 ```
 
 **🤖 Match** runs the job description against your `resume.txt` using a local Ollama model and returns a private match score, reasons it fits, and a one-line recommendation — all ephemeral.
+
+**⏰ Remind** sets a custom reminder N days out — the bot DMs you when it fires.
 
 The browse session **auto-deletes after 3 minutes** of inactivity to keep your DMs clean. The summary embed **updates automatically** after every job you review so your counts stay current.
 
@@ -60,16 +62,24 @@ The browse session **auto-deletes after 3 minutes** of inactivity to keep your D
 | Command | What it does |
 |---|---|
 | `/summary` | Summary of all unreviewed internships by category with a browse dropdown |
-| `/fortune-100` | Browse unreviewed internships from Fortune 100 companies only |
+| `/find <query>` | Search indexed jobs by keyword — opens browse card navigation |
 | `/pipeline` | Full application funnel with company names — applied, interviews, offers |
 | `/stats` | Application pipeline stats — counts by status and response rate |
-| `/find <query>` | Search indexed jobs by keyword or company name |
 | `/export` | DM a CSV of all applied, interview, and offer jobs |
-| `/check` | Trigger a manual scan immediately |
-| `/status` | Bot health — scan stats, job counts, company error report, and live Pi hardware stats (CPU temp, RAM, disk, uptime) |
+| `/setgoal <n>` | Set a weekly application target shown as a progress bar in the summary |
+| `/check [company]` | Trigger a manual scan immediately (all companies or one by name) |
+| `/blacklist <company>` | Permanently hide a company from your feed |
+| `/unblacklist <company>` | Remove a company from your blacklist |
+| `/blacklist-show` | See your full blacklist |
+| `/setlocation <cities>` | Only receive jobs matching specific cities (comma-separated) |
+| `/status` | Bot health — scan stats, job counts, company error report, and live Pi hardware stats |
+| `/companies [filter] [search]` | List tracked companies filtered by active / deactivated / erroring |
+| `/errors` | Last 15 scrape errors with timestamps |
+| `/reactivate [company] [all]` | Reactivate deactivated companies from Discord |
+| `/help` | Full slash command reference organized by section |
 | `/version` | Current version, last scan time, new jobs found, and bot uptime |
-| `/live-pi` | Live Raspberry Pi hardware monitor — CPU temp, GPU temp, RAM, disk, uptime, refreshing every 5 seconds |
-| `/log` | Downloads a single report file — last 50 log lines and the full company error/deactivation table combined |
+| `/live-pi` | Live Raspberry Pi hardware monitor — CPU temp, GPU temp, RAM, disk, uptime |
+| `/log` | Downloads a combined report — last 50 log lines and full company health table |
 | `/clear-dm` | Delete all bot messages from your DMs for a clean slate |
 
 ---
@@ -125,7 +135,6 @@ nano .env
 ```env
 DISCORD_TOKEN=your-bot-token-here
 MY_DISCORD_USER_ID=your-discord-user-id-here
-SCAN_INTERVAL_MINUTES=10
 ```
 
 > **Get your user ID:** Discord → Settings → Advanced → enable Developer Mode → right-click your name → Copy User ID.
@@ -135,8 +144,8 @@ SCAN_INTERVAL_MINUTES=10
 ### 3. Seed companies and start
 
 ```bash
-python seed_companies.py   # load all 427+ companies into the database
-python bot.py              # start the bot
+python seed_companies.py        # load all 570+ companies into the database
+python bot.py                   # start the bot
 ```
 
 You'll receive a DM confirmation when the bot is online.
@@ -161,6 +170,7 @@ journalctl -u pertern -f
 ```bash
 git pull
 pip install -r requirements.txt
+python seed_companies.py --reset-all --prune   # reactivate fixed companies, remove deleted ones
 sudo systemctl restart pertern
 ```
 
@@ -181,10 +191,10 @@ PerTern/
 ├── filters.py          # Preference matching helpers
 ├── tagging.py          # Auto-tags jobs: category, term, salary, deadline, location
 ├── scraper/
-│   ├── __init__.py     # run_all_scrapers() entry point
+│   ├── __init__.py     # run_all_scrapers() entry point with per-source rate limiting
 │   └── ats.py          # Fetchers: Greenhouse, Lever, Ashby, Workday, iCIMS, etc.
-├── seed_companies.py   # Upserts companies.csv → DB on every startup
-├── companies.csv       # 427+ companies to track
+├── seed_companies.py   # Upserts companies.csv → DB (--reset-all, --prune flags)
+├── companies.csv       # 570+ companies to track
 ├── pertern.service     # systemd service file for Raspberry Pi
 ├── requirements.txt
 └── .env.example
