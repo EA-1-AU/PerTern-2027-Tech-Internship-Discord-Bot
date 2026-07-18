@@ -543,7 +543,9 @@ def _weekly_goal_line(uid: str) -> str:
 
 
 def _next_scan_timestamp() -> str:
-    """Return a Discord relative timestamp string for the next scheduled scan."""
+    """Return a Discord relative timestamp string for the next scheduled scan, or scan-in-progress notice."""
+    if _scan_lock.locked():
+        return "⏳ Scan in progress…"
     nxt = scan_loop.next_iteration
     if nxt is None:
         return ""
@@ -1482,6 +1484,15 @@ async def daily_digest_loop():
         await _update_summary(new_count=0)
     except Exception:
         log.exception("Daily digest error")
+
+
+@tasks.loop(minutes=5)
+async def summary_refresh_loop():
+    """Keep the summary countdown live — updates every 5 min so scan status stays current."""
+    try:
+        await _update_summary()
+    except Exception:
+        log.exception("Summary refresh error")
 
 
 @tasks.loop(time=datetime.time(hour=14, minute=0, tzinfo=timezone.utc))  # 9AM ET / 10AM EDT
@@ -2566,6 +2577,7 @@ async def on_ready():
 
     scan_loop.start()
     daily_digest_loop.start()
+    summary_refresh_loop.start()
     weekly_stats_loop.start()
     snooze_check_loop.start()
     followup_reminder_loop.start()
