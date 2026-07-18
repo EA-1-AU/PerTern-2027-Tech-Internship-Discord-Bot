@@ -171,12 +171,11 @@ def _db_unreviewed_by_category() -> dict[str, int]:
     uid = str(MY_USER_ID)
     with sqlite3.connect(str(db.DB_PATH)) as conn:
         rows = conn.execute("""
-            SELECT j.category, COUNT(*) FROM jobs j
+            SELECT COALESCE(NULLIF(j.category, ''), '🔍 Uncategorized'), COUNT(*) FROM jobs j
             LEFT JOIN user_jobs uj
                 ON j.job_id = uj.job_id AND uj.user_id = ?
             WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
-            AND j.category IS NOT NULL AND j.category != ''
-            GROUP BY j.category
+            GROUP BY COALESCE(NULLIF(j.category, ''), '🔍 Uncategorized')
             ORDER BY COUNT(*) DESC
         """, (uid,)).fetchall()
     return {r[0]: r[1] for r in rows}
@@ -188,14 +187,24 @@ def _db_unreviewed_jobs(category: str | None = None) -> list[dict]:
     with sqlite3.connect(str(db.DB_PATH)) as conn:
         conn.row_factory = sqlite3.Row
         if category:
-            rows = conn.execute("""
-                SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
-                LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
-                LEFT JOIN companies c ON j.company = c.name
-                WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
-                AND j.category = ?
-                ORDER BY co_priority DESC, j.first_seen DESC
-            """, (uid, category)).fetchall()
+            if category == "🔍 Uncategorized":
+                rows = conn.execute("""
+                    SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
+                    LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
+                    LEFT JOIN companies c ON j.company = c.name
+                    WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
+                    AND (j.category IS NULL OR j.category = '')
+                    ORDER BY co_priority DESC, j.first_seen DESC
+                """, (uid,)).fetchall()
+            else:
+                rows = conn.execute("""
+                    SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
+                    LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
+                    LEFT JOIN companies c ON j.company = c.name
+                    WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
+                    AND j.category = ?
+                    ORDER BY co_priority DESC, j.first_seen DESC
+                """, (uid, category)).fetchall()
         else:
             rows = conn.execute("""
                 SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
