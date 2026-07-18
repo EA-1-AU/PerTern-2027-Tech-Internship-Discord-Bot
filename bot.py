@@ -1156,7 +1156,17 @@ async def _get_dm() -> discord.DMChannel:
     return await user.create_dm()
 
 
+_scan_lock = asyncio.Lock()
+
 async def _run_scan(label: str = "") -> int:
+    if _scan_lock.locked():
+        log.info("Scan skipped%s — another scan already running", f" ({label})" if label else "")
+        return 0
+    async with _scan_lock:
+        return await _run_scan_inner(label)
+
+
+async def _run_scan_inner(label: str = "") -> int:
     log.info("Scan starting%s...", f" ({label})" if label else "")
     loop     = asyncio.get_event_loop()
     new_jobs: list[dict] = []
@@ -1663,6 +1673,11 @@ async def slash_check(interaction: discord.Interaction, company: str = ""):
         )
     else:
         # Full scan
+        if _scan_lock.locked():
+            await interaction.response.send_message(
+                "⏳ A scan is already running — wait for it to finish.", ephemeral=True
+            )
+            return
         await interaction.response.send_message("🔍 Scanning all companies...", ephemeral=True)
         count = await _run_scan(label="manual")
         await interaction.followup.send(
