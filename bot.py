@@ -1743,7 +1743,12 @@ async def slash_check(interaction: discord.Interaction, company: str = ""):
             await interaction.followup.send(msg, ephemeral=True)
         except discord.errors.HTTPException:
             dm = await _get_dm()
-            await dm.send(f"📬 Manual scan finished (took >15 min): {msg}")
+            fallback = await dm.send(f"📬 Manual scan finished (took >15 min): {msg}")
+            await asyncio.sleep(60)
+            try:
+                await fallback.delete()
+            except Exception:
+                pass
 
 
 @tree.command(name="stats", description="Your application pipeline stats")
