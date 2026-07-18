@@ -355,23 +355,44 @@ def _is_internship(title: str) -> bool:
 
 
 def _2027_filter(job: dict) -> bool:
-    """Only allow jobs that are explicitly 2027 or undated non-Simplify sources."""
-    raw = f"{job.get('title','')} {job.get('description','')}".lower()
+    """
+    Allow jobs that are explicitly for 2027 or undated (assumed current cycle).
+    Uses a two-tier approach:
+      - Title/term: strict — any wrong year rejects immediately.
+      - Description only: softer — 2026 in desc is OK unless it's clearly
+        in an intern-cycle context (e.g. "Summer 2026 Intern Program").
+        2025/2028+ in desc always rejects.
+    """
+    title = (job.get("title") or "").lower()
+    desc  = (job.get("description") or "").lower()
+    term  = (job.get("term") or "").lower()
 
-    # Reject any job that mentions a wrong year anywhere in title/description
+    # Hard block — wrong year in title or term field
     for bad_yr in ("2025", "2026", "2028", "2029", "2030"):
-        if bad_yr in raw:
+        if bad_yr in title or bad_yr in term:
             return False
 
-    # If the term field contains an explicit year, it must be 2027
-    term = job.get("term") or ""
-    yr   = re.search(r'(20\d{2})', term)
+    # Explicit 2027 in term → always accept
+    yr = re.search(r'(20\d{2})', term)
     if yr:
         return yr.group(1) == "2027"
 
-    # Simplify repos are curated for 2026 — skip undated ones
+    # Description checks — years other than 2026 are hard blocks
+    for bad_yr in ("2025", "2028", "2029", "2030"):
+        if bad_yr in desc:
+            return False
+
+    # 2026 in description only: allow UNLESS it's clearly an intern-cycle reference
+    if "2026" in desc and "2027" not in desc:
+        if re.search(r'(summer|fall|spring|winter|fiscal|fy)\s*2026', desc):
+            return False
+        if re.search(r'2026\s*(intern|co-?op|new\s*grad|graduate)', desc):
+            return False
+        # Otherwise it's incidental (fiscal year, company history, etc.) — allow
+
+    # Simplify repos are curated 12 months ahead — require explicit 2027
     if job.get("source", "").lower() == "simplify":
-        return False
+        return "2027" in f"{title} {desc} {term}"
 
     return True
 
@@ -2119,31 +2140,137 @@ async def slash_errors(interaction: discord.Interaction):
 
 
 @tree.command(name="find", description="Search indexed jobs by keyword or company name")
-@discord.app_commands.describe(query="Title or company to search for")
+@discord.app_commands.describe(query="Title, company, or category to search for")
 async def slash_find(interaction: discord.Interaction, query: str):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.defer(ephemeral=True)
-    results = db.search_jobs(query, limit=10)
+    results = db.search_jobs(query, limit=50)
     if not results:
         await interaction.followup.send(f"No jobs found matching **{query}**.", ephemeral=True)
         return
+
     uid = str(MY_USER_ID)
+    job = results[0]
+    uj  = db.get_user_job(uid, job.get("job_id", ""))
+    status = (uj or {}).get("status", "")
+
+    _browse["jobs"]     = results
+    _browse["index"]    = 0
+    _browse["category"] = f'search: {query}'
+
+    em = _make_job_embed(job, index=0, total=len(results), status=status)
+    em.description = (
+        f"🔍 **\"{query}\"** — {len(results)} result{'s' if len(results) != 1 else ''}\n"
+        f"◀ ▶ to navigate · ✅ Applied · ⏭️ Skip · ••• More options"
+    )
+    view = BrowseView(job)
+    await interaction.followup.send(embed=em, view=view, ephemeral=True)
+    view.message = await interaction.original_response()
+
+
+@tree.command(name="companies", description="List tracked companies — filter by status or search by name")
+@app_commands.describe(
+    filter="all (default), active, deactivated, or erroring",
+    search="Optional: filter by company name",
+)
+async def slash_companies(
+    interaction: discord.Interaction,
+    filter: str = "all",
+    search: str = "",
+):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+
+    with __import__("sqlite3").connect(db.DB_PATH) as con:
+        con.row_factory = __import__("sqlite3").Row
+        q = "SELECT name, source, active, fail_count FROM companies"
+        conds, params = [], []
+        f = filter.lower()
+        if f == "active":
+            conds.append("active=1"); conds.append("fail_count=0")
+        elif f == "deactivated":
+            conds.append("active=0")
+        elif f == "erroring":
+            conds.append("fail_count>0"); conds.append("active=1")
+        if search:
+            conds.append("LOWER(name) LIKE ?")
+            params.append(f"%{search.lower()}%")
+        if conds:
+            q += " WHERE " + " AND ".join(conds)
+        q += " ORDER BY active DESC, fail_count ASC, name ASC LIMIT 200"
+        rows = [dict(r) for r in con.execute(q, params).fetchall()]
+
+    if not rows:
+        await interaction.followup.send("No companies match that filter.", ephemeral=True)
+        return
+
     lines = []
-    for j in results:
-        uj     = db.get_user_job(uid, j.get("job_id",""))
-        status = (uj or {}).get("status","")
-        badge  = {"applied":"✅","skipped":"⏭️","interview":"🗣️","offer":"🎉","snoozed":"💤"}.get(status,"🔵")
-        url    = j.get("url","")
-        link   = f"[{j.get('title','')}]({url})" if url else j.get("title","")
-        lines.append(f"{badge} **{j.get('company','')}** — {link}")
+    for r in rows:
+        icon = "✅" if r["active"] and r["fail_count"] == 0 else \
+               "⚠️" if r["active"] and r["fail_count"] > 0 else "❌"
+        fc   = f" ({r['fail_count']}x)" if r["fail_count"] else ""
+        lines.append(f"{icon} **{r['name']}** `{r['source']}`{fc}")
+
+    # Paginate into chunks of 30
+    chunks = [lines[i:i+30] for i in range(0, len(lines), 30)]
+    for i, chunk in enumerate(chunks[:4]):   # max 4 messages
+        em = discord.Embed(
+            title=f"🏢 Companies ({filter})" + (f' — "{search}"' if search else "") +
+                  (f" [{i+1}/{len(chunks)}]" if len(chunks) > 1 else ""),
+            description="\n".join(chunk),
+            color=discord.Color.blurple(),
+        )
+        if i == len(chunks) - 1 or i == 3:
+            em.set_footer(text=f"{len(rows)} total · ✅ active  ⚠️ erroring  ❌ deactivated")
+        await interaction.followup.send(embed=em, ephemeral=True)
+
+
+@tree.command(name="help", description="All PerTern slash commands at a glance")
+async def slash_help(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+
+    sections = {
+        "📋 Feed": [
+            ("`/summary`", "Refresh the internship feed"),
+            ("`/find <query>`", "Search all indexed jobs — opens browse cards"),
+            ("`/check [company]`", "Trigger a manual scan (all or one company)"),
+        ],
+        "📊 Pipeline": [
+            ("`/pipeline`", "Browse your applied / interview / offer jobs"),
+            ("`/stats`", "Quick pipeline counts"),
+            ("`/export`", "Download pipeline as CSV"),
+            ("`/setgoal <n>`", "Set weekly application target"),
+        ],
+        "🚫 Filters": [
+            ("`/blacklist <company>`", "Permanently hide a company"),
+            ("`/unblacklist <company>`", "Undo a blacklist"),
+            ("`/blacklist-show`", "See your full blacklist"),
+            ("`/setlocation <cities>`", "Only show jobs in certain cities"),
+        ],
+        "⚙️ Bot": [
+            ("`/status`", "Health dashboard — companies, Pi stats, scan info"),
+            ("`/companies [filter]`", "List tracked companies (active/deactivated/erroring)"),
+            ("`/errors`", "Last 15 scrape errors with timestamps"),
+            ("`/reactivate [company] [all]`", "Reactivate deactivated companies"),
+            ("`/version`", "Version and uptime"),
+        ],
+    }
+
     em = discord.Embed(
-        title=f"🔍 Results for \"{query}\"",
-        description="\n".join(lines),
+        title="🤖 PerTern — Command Reference",
         color=discord.Color.from_rgb(88, 101, 242),
     )
-    em.set_footer(text=f"{len(results)} result(s)")
-    await interaction.followup.send(embed=em, ephemeral=True)
+    for section, cmds in sections.items():
+        em.add_field(
+            name=section,
+            value="\n".join(f"{name} — {desc}" for name, desc in cmds),
+            inline=False,
+        )
+    em.set_footer(text="All commands are ephemeral (only visible to you) except /summary")
+    await interaction.response.send_message(embed=em, ephemeral=True)
 
 
 @tree.command(name="export", description="Download a CSV of all applied/interview/offer jobs")
