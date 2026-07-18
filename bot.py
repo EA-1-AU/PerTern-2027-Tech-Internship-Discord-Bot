@@ -1680,10 +1680,12 @@ async def slash_check(interaction: discord.Interaction, company: str = ""):
             return
         await interaction.response.send_message("🔍 Scanning all companies...", ephemeral=True)
         count = await _run_scan(label="manual")
-        await interaction.followup.send(
-            f"✅ Done — {'no new matches' if count == 0 else f'**{count}** new matches added to your summary'}.",
-            ephemeral=True,
-        )
+        msg = f"✅ Done — {'no new matches' if count == 0 else f'**{count}** new matches added to your summary'}."
+        try:
+            await interaction.followup.send(msg, ephemeral=True)
+        except discord.errors.HTTPException:
+            dm = await _get_dm()
+            await dm.send(f"📬 Manual scan finished (took >15 min): {msg}")
 
 
 @tree.command(name="stats", description="Your application pipeline stats")
