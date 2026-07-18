@@ -551,6 +551,15 @@ def skip_all_new_for_user(user_id: str) -> int:
         return cur.rowcount
 
 
+def get_skipped_job_ids(user_id: str) -> set:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT job_id FROM user_jobs WHERE user_id=? AND status='skip'",
+            (user_id,),
+        )
+        return {r[0] for r in cur.fetchall()}
+
+
 # ── User preferences ──────────────────────────────────────────────────────────
 
 def get_user_prefs(user_id: str) -> dict | None:

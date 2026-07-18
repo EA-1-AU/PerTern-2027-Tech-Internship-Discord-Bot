@@ -446,6 +446,11 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
     if term:     em.add_field(name="📅 Term",     value=term,       inline=True)
     if salary:   em.add_field(name="💰 Salary",   value=salary,     inline=True)
     if cat:      em.add_field(name="🏷️ Category", value=cat,        inline=True)
+    desc_lower = job.get("description", "").lower()
+    is_rolling = (
+        not deadline
+        and ("rolling" in desc_lower or "until filled" in desc_lower or "open until" in desc_lower)
+    )
     if deadline:
         dl_display = deadline
         try:
@@ -463,6 +468,8 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
         except Exception:
             pass
         em.add_field(name="⏰ Deadline", value=dl_display, inline=True)
+    elif is_rolling:
+        em.add_field(name="⏰ Deadline", value="Rolling", inline=True)
     # Company note
     company_note = db.get_company_note(str(MY_USER_ID), company)
     if company_note:
@@ -1173,6 +1180,14 @@ async def _run_scan_inner(label: str = "") -> int:
 
     _blacklist = set(c.lower() for c in db.get_blacklist(str(MY_USER_ID)))
 
+    # Build a set of title keys for jobs the user already skipped so we don't re-surface them
+    _skipped_ids   = db.get_skipped_job_ids(str(MY_USER_ID))
+    _skipped_tkeys: set[str] = set()
+    for _sjid in _skipped_ids:
+        _sjob = db.get_job(_sjid)
+        if _sjob:
+            _skipped_tkeys.add(_title_key(_sjob.get("company", ""), _sjob.get("title", "")))
+
     def _on_batch(company: str, raw_jobs: list[dict]):
         for job in raw_jobs:
             if job.get("company", "").lower() in _blacklist:
@@ -1188,11 +1203,17 @@ async def _run_scan_inner(label: str = "") -> int:
             jid = job.get("job_id", "")
             if jid in _seen_job_ids:
                 continue
+            # Skip if user already skipped this exact job or same role at same company
+            if jid in _skipped_ids:
+                _seen_job_ids.add(jid)
+                continue
+            tkey = _title_key(job.get("company",""), job.get("title",""))
+            if tkey in _skipped_tkeys:
+                continue
             if db.job_exists(jid):
                 _seen_job_ids.add(jid)
                 continue
             # Dedupe by company+title (catches same role across multiple ATS sources)
-            tkey = _title_key(job.get("company",""), job.get("title",""))
             if tkey in _seen_title_keys:
                 continue
             _seen_title_keys.add(tkey)
