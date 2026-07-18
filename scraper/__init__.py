@@ -44,6 +44,7 @@ _FETCHERS = {
 # Seconds to wait between consecutive requests to the same ATS to avoid rate limits
 _SOURCE_DELAY = {
     "workday": 2.0,
+    "ashby":   1.5,
 }
 
 

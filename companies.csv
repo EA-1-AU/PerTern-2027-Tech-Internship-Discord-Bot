@@ -453,7 +453,7 @@ Pentera,greenhouse,pentera,,0
 Devo,greenhouse,devo,,0
 
 # ── Quant / Trading firms ─────────────────────────────────────────────────────
-IMC Trading,greenhouse,imctradingbv,,1
+IMC Trading,greenhouse,imc,,1
 Point72,greenhouse,point72,,1
 AQR Capital,greenhouse,aqr,,0
 
@@ -526,7 +526,7 @@ Calix,workday,,https://calix.wd1.myworkdayjobs.com/en-US/Calix_Careers,0
 NetScout,workday,,https://netscout.wd5.myworkdayjobs.com/NetScout,0
 
 # ── Tesla / EV / Autonomous ───────────────────────────────────────────────────
-Tesla,lever,tesla,,1
+# Tesla uses JS-gated custom career page — covered via Simplify
 Aurora,greenhouse,aurora-innovation,,0
 Mobileye,greenhouse,mobileye,,0
 Zoox,greenhouse,zoox,,0
@@ -535,8 +535,8 @@ May Mobility,greenhouse,may-mobility,,0
 
 
 # ── Aerospace ─────────────────────────────────────────────────────────────────
-Blue Origin,greenhouse,blue-origin,,1
-Rocket Lab,lever,rocketlab,,1
+Blue Origin,workday,,https://blueorigin.wd5.myworkdayjobs.com/BlueOrigin,1
+Rocket Lab,greenhouse,rocketlab,,1
 Joby Aviation,greenhouse,joby-aviation,,0
 Sierra Nevada Corporation,workday,,https://snc.wd1.myworkdayjobs.com/SNC_External,0
 Relativity Space,greenhouse,relativity-space,,0

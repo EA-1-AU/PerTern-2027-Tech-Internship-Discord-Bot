@@ -46,6 +46,9 @@ USER_AGENT = {
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br",
     "Connection": "keep-alive",
+    "sec-ch-ua": '"Chromium";v="127", "Not)A;Brand";v="99"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
@@ -119,21 +122,20 @@ def fetch_lever(company_slug):
 
 
 def fetch_ashby(company_slug):
-    # Ashby's public API — try POST first (newer format), fall back to GET
-    post_headers = {**USER_AGENT, "Content-Type": "application/json"}
-    r = requests.post(
-        "https://api.ashbyhq.com/posting-api/job-board",
-        json={"jobBoardIdentifier": company_slug},
-        headers=post_headers,
-        timeout=30,
-    )
-    if not r.ok or not r.content.strip():
-        # Fall back to legacy GET endpoint
-        url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}"
-        r = requests.get(url, headers=USER_AGENT, timeout=30)
-        r.raise_for_status()
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}"
+    headers = {
+        **USER_AGENT,
+        "Accept": "application/json, text/plain, */*",
+        "Referer": f"https://jobs.ashbyhq.com/{company_slug}",
+        "Origin": "https://jobs.ashbyhq.com",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
+    }
+    r = requests.get(url, headers=headers, timeout=30)
+    r.raise_for_status()
     if not r.content.strip():
-        raise ValueError(f"Ashby returned empty body for slug '{company_slug}'")
+        raise ValueError(f"Ashby returned empty body for '{company_slug}' (likely Cloudflare block)")
     data = r.json()
     jobs = []
     for job in data.get("jobs", []):
