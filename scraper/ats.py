@@ -119,9 +119,21 @@ def fetch_lever(company_slug):
 
 
 def fetch_ashby(company_slug):
-    url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}"
-    r = requests.get(url, headers=USER_AGENT, timeout=30)
-    r.raise_for_status()
+    # Ashby's public API — try POST first (newer format), fall back to GET
+    post_headers = {**USER_AGENT, "Content-Type": "application/json"}
+    r = requests.post(
+        "https://api.ashbyhq.com/posting-api/job-board",
+        json={"jobBoardIdentifier": company_slug},
+        headers=post_headers,
+        timeout=30,
+    )
+    if not r.ok or not r.content.strip():
+        # Fall back to legacy GET endpoint
+        url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}"
+        r = requests.get(url, headers=USER_AGENT, timeout=30)
+        r.raise_for_status()
+    if not r.content.strip():
+        raise ValueError(f"Ashby returned empty body for slug '{company_slug}'")
     data = r.json()
     jobs = []
     for job in data.get("jobs", []):
