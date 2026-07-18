@@ -232,24 +232,6 @@ _FORTUNE_100 = {
 }
 
 
-def _db_fortune100_jobs() -> list[dict]:
-    """Return unreviewed jobs from Fortune 100 companies."""
-    uid  = str(MY_USER_ID)
-    names = list(_FORTUNE_100)
-    placeholders = ",".join("?" * len(names))
-    with sqlite3.connect(str(db.DB_PATH)) as conn:
-        conn.row_factory = sqlite3.Row
-        rows = conn.execute(f"""
-            SELECT j.*, COALESCE(c.priority, 0) as co_priority FROM jobs j
-            LEFT JOIN user_jobs uj ON j.job_id = uj.job_id AND uj.user_id = ?
-            LEFT JOIN companies c ON j.company = c.name
-            WHERE (uj.status IS NULL OR uj.status NOT IN ('applied','skipped','snoozed','interview','offer'))
-            AND j.company IN ({placeholders})
-            ORDER BY co_priority DESC, j.first_seen DESC
-        """, [uid] + names).fetchall()
-    return [dict(r) for r in rows]
-
-
 def _db_total_unreviewed() -> int:
     uid = str(MY_USER_ID)
     with sqlite3.connect(str(db.DB_PATH)) as conn:
@@ -1002,8 +984,27 @@ async def _run_scan(label: str = "") -> int:
         try:
             dm  = await _get_dm()
             msg = await dm.send(f"📬 **+{count} new internship{'s' if count != 1 else ''}** found — check your summary above!")
+
+            # Fortune 100 alert — send alongside ping, delete at the same time
+            f100_new = [j for j in new_jobs if j.get("company", "") in _FORTUNE_100]
+            f100_msg = None
+            if f100_new:
+                names = ", ".join(f"**{j['company']}**" for j in f100_new[:5])
+                suffix = f" (+{len(f100_new) - 5} more)" if len(f100_new) > 5 else ""
+                em = discord.Embed(
+                    title="🏆 Fortune 100 Alert",
+                    description=f"{names}{suffix}",
+                    color=discord.Color.gold(),
+                )
+                f100_msg = await dm.send(embed=em)
+
             await asyncio.sleep(60)
             await msg.delete()
+            if f100_msg:
+                try:
+                    await f100_msg.delete()
+                except Exception:
+                    pass
         except Exception as e:
             log.warning("Ping notification error: %s", e)
 
@@ -1325,34 +1326,6 @@ async def slash_live_pi(interaction: discord.Interaction):
 
     task = asyncio.create_task(_refresh_loop())
     view.set_task(task)
-
-
-@tree.command(name="fortune-100", description="Browse unreviewed internships from Fortune 100 companies")
-async def slash_fortune100(interaction: discord.Interaction):
-    if not _owner_only(interaction):
-        await interaction.response.send_message("Personal bot.", ephemeral=True); return
-
-    jobs = _db_fortune100_jobs()
-    if not jobs:
-        await interaction.response.send_message(
-            "No unreviewed Fortune 100 internships right now.", ephemeral=True
-        )
-        return
-
-    _browse["jobs"]     = jobs
-    _browse["index"]    = 0
-    _browse["category"] = None
-
-    uid    = str(MY_USER_ID)
-    job    = jobs[0]
-    uj     = db.get_user_job(uid, job.get("job_id", ""))
-    status = (uj or {}).get("status", "")
-    em     = _make_job_embed(job, index=0, total=len(jobs), status=status)
-    em.description = f"🏆 Fortune 100 — {len(jobs)} unreviewed internships\nUse ◀ ▶ to navigate · Applied/Skip to mark"
-
-    view = BrowseView(job)
-    await interaction.response.send_message(embed=em, view=view, ephemeral=True)
-    view.message = await interaction.original_response()
 
 
 def _load_resume() -> str:
