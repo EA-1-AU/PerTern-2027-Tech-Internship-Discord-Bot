@@ -293,10 +293,21 @@ _TITLE_BLACKLIST_RE = re.compile(
     re.IGNORECASE,
 )
 
+_MILITARY_BLACKLIST_RE = re.compile(
+    r'\b(military|armed\s+forces|army|navy|air\s+force|marine\s+corps|coast\s+guard|'
+    r'national\s+guard|space\s+force|rotc|warrant\s+officer|commissioned\s+officer|'
+    r'enlisted|officer\s+candidate|officer\s+training|military\s+officer|'
+    r'jag|judge\s+advocate|military\s+intelligence|combat|'
+    r'cadet|military\s+academy|west\s+point|naval\s+academy|air\s+force\s+academy)\b',
+    re.IGNORECASE,
+)
+
 def _is_internship(title: str) -> bool:
     if _SKILLBRIDGE_RE.search(title):
         return False
     if _TITLE_BLACKLIST_RE.search(title):
+        return False
+    if _MILITARY_BLACKLIST_RE.search(title):
         return False
     if re.search(r'\bintern(ship)?\b', title, re.IGNORECASE):
         return True
@@ -315,15 +326,22 @@ def _is_internship(title: str) -> bool:
 def _2027_filter(job: dict) -> bool:
     """Only allow jobs that are explicitly 2027 or undated non-Simplify sources."""
     raw = f"{job.get('title','')} {job.get('description','')}".lower()
-    if "2026" in raw:
-        return False
+
+    # Reject any job that mentions a wrong year anywhere in title/description
+    for bad_yr in ("2025", "2026", "2028", "2029", "2030"):
+        if bad_yr in raw:
+            return False
+
+    # If the term field contains an explicit year, it must be 2027
     term = job.get("term") or ""
     yr   = re.search(r'(20\d{2})', term)
     if yr:
         return yr.group(1) == "2027"
-    # Simplify repos are named "Summer2026" — undated Simplify = 2026 by default
+
+    # Simplify repos are curated for 2026 — skip undated ones
     if job.get("source", "").lower() == "simplify":
         return False
+
     return True
 
 
