@@ -392,6 +392,11 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
         except Exception:
             pass
         em.add_field(name="⏰ Deadline", value=dl_display, inline=True)
+    # Company note
+    company_note = db.get_company_note(str(MY_USER_ID), company)
+    if company_note:
+        em.add_field(name="🗒️ Your Note", value=company_note[:500], inline=False)
+
     if reason:   em.add_field(name="🎯 Why sent", value=reason,     inline=False)
     if url:      em.add_field(name="🔗 Apply",    value=f"[Open listing]({url})", inline=False)
     if status:   em.add_field(name="📝 Status",   value=f"{status_prefix}{status.title()}", inline=False)
@@ -512,6 +517,38 @@ class SnoozeModal(discord.ui.Modal, title="Snooze this job"):
         db.ensure_user_job(uid, jid)
         db.set_user_status(uid, jid, "snoozed")
         await _advance_after_mark(interaction, "snoozed")
+
+
+class CompanyNoteModal(discord.ui.Modal, title="Company Note"):
+    note = discord.ui.TextInput(
+        label="Note about this company",
+        placeholder="e.g. 3 rounds, leetcode heavy. Recruiter: Jane. Referral via John.",
+        required=False,
+        max_length=500,
+        style=discord.TextStyle.paragraph,
+    )
+
+    def __init__(self, job: dict):
+        super().__init__()
+        self.job = job
+        company  = job.get("company", "")
+        existing = db.get_company_note(str(MY_USER_ID), company)
+        if existing:
+            self.note.default = existing
+
+    async def on_submit(self, interaction: discord.Interaction):
+        company = self.job.get("company", "")
+        uid     = str(MY_USER_ID)
+        db.set_company_note(uid, company, self.note.value)
+        if self.note.value.strip():
+            await interaction.response.send_message(
+                f"🗒️ Note saved for **{company}**. It'll appear on every card from them.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"🗒️ Note cleared for **{company}**.", ephemeral=True,
+            )
 
 
 # ── Browse helpers ────────────────────────────────────────────────────────────
@@ -655,7 +692,8 @@ class BrowseView(discord.ui.View):
 class MoreView(discord.ui.View):
     """
     Row 0: 🗣️ Interview | 🎉 Offer | ❌ Rejected | 💤 Snooze | ← Back
-    Row 1: 🔗 Copy Link | ⭐ Priority | 📄 Details
+    Row 1: 🔗 Copy Link | ⭐ Priority | 📄 Details | 🗒️ Note
+    Row 2: 🤖 Match
     Auto-deletes after 3 minutes of inactivity (shared with BrowseView).
     """
 
@@ -739,7 +777,11 @@ class MoreView(discord.ui.View):
         )
         await interaction.followup.send(embed=em, ephemeral=True)
 
-    @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.secondary, row=1)
+    @discord.ui.button(label="🗒️ Note", style=discord.ButtonStyle.secondary, row=1)
+    async def note_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(CompanyNoteModal(self.job))
+
+    @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.secondary, row=2)
     async def match_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
         loop = asyncio.get_event_loop()

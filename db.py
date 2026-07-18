@@ -179,6 +179,7 @@ def init_db():
             "CREATE TABLE IF NOT EXISTS user_goals (user_id TEXT PRIMARY KEY, weekly_target INTEGER DEFAULT 5, created_at TEXT)",
             "CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT)",
             "CREATE TABLE IF NOT EXISTS reported_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, job_id TEXT NOT NULL, reason TEXT, created_at TEXT)",
+            "CREATE TABLE IF NOT EXISTS company_notes (user_id TEXT NOT NULL, company TEXT NOT NULL, note TEXT NOT NULL, updated_at TEXT, PRIMARY KEY (user_id, company))",
         ]:
             try:
                 cur.execute(stmt)
@@ -936,3 +937,32 @@ def flag_job_inactive(job_id: str):
     """Mark a job that was reported too many times as no longer active."""
     with db_cursor(commit=True) as cur:
         cur.execute("DELETE FROM jobs WHERE job_id=?", (job_id,))
+
+
+# ── Company notes ──────────────────────────────────────────────────────────────
+
+def get_company_note(user_id: str, company: str) -> str | None:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT note FROM company_notes WHERE user_id=? AND LOWER(company)=LOWER(?)",
+            (str(user_id), company),
+        )
+        r = cur.fetchone()
+        return r[0] if r else None
+
+
+def set_company_note(user_id: str, company: str, note: str):
+    now = datetime.datetime.utcnow().isoformat()
+    with db_cursor(commit=True) as cur:
+        if note.strip():
+            cur.execute(
+                """INSERT INTO company_notes (user_id, company, note, updated_at)
+                   VALUES (?,?,?,?)
+                   ON CONFLICT(user_id, company) DO UPDATE SET note=excluded.note, updated_at=excluded.updated_at""",
+                (str(user_id), company, note.strip(), now),
+            )
+        else:
+            cur.execute(
+                "DELETE FROM company_notes WHERE user_id=? AND LOWER(company)=LOWER(?)",
+                (str(user_id), company),
+            )
