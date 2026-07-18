@@ -4,6 +4,7 @@ Queries active companies from the DB and dispatches to the right ATS fetcher.
 """
 
 import logging
+import time
 import sys
 from pathlib import Path
 
@@ -40,16 +41,22 @@ _FETCHERS = {
     "github_md":       lambda c: fetch_github_md_table(c),
 }
 
+# Seconds to wait between consecutive requests to the same ATS to avoid rate limits
+_SOURCE_DELAY = {
+    "workday": 2.0,
+}
+
 
 def run_all_scrapers(on_batch=None) -> list[dict]:
     """Synchronous — call from a thread pool executor.
 
     on_batch(company_name, jobs): called immediately after each company
     finishes scraping so callers can process/post jobs without waiting
-    for all 310 companies to finish.
+    for all companies to finish.
     """
     companies = db.get_all_active_companies()
     all_jobs: list[dict] = []
+    last_source_time: dict[str, float] = {}
 
     for company in companies:
         source = (company.get("source") or "").lower()
@@ -57,6 +64,14 @@ def run_all_scrapers(on_batch=None) -> list[dict]:
         if not fetcher:
             log.warning("No fetcher for source '%s' (company: %s)", source, company["name"])
             continue
+
+        # Rate-limit per ATS source
+        delay = _SOURCE_DELAY.get(source, 0)
+        if delay:
+            elapsed = time.monotonic() - last_source_time.get(source, 0)
+            if elapsed < delay:
+                time.sleep(delay - elapsed)
+
         try:
             jobs = fetcher(company) or []
             log.info("  ✓ %-35s  %d jobs", company["name"], len(jobs))
@@ -65,10 +80,13 @@ def run_all_scrapers(on_batch=None) -> list[dict]:
             if on_batch and jobs:
                 on_batch(company["name"], jobs)
         except Exception as e:
-            log.warning("  ✗ %-35s  %s", company["name"], e)
+            # Log the full exception class + message so errors are diagnosable
+            log.warning("  ✗ %-35s  [%s] %s", company["name"], type(e).__name__, e)
             count, deactivated = db.record_company_failure(company["name"], company["source"])
             if deactivated:
                 log.info("Deactivated %s after %d failures", company["name"], count)
+        finally:
+            last_source_time[source] = time.monotonic()
 
     log.info("Scraped %d companies → %d raw jobs", len(companies), len(all_jobs))
     return all_jobs
