@@ -3,3 +3,4 @@ python-dotenv
 requests
 beautifulsoup4
 psutil
+curl_cffi>=0.7

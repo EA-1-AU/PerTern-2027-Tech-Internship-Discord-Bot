@@ -122,9 +122,14 @@ def fetch_lever(company_slug):
 
 
 def fetch_ashby(company_slug):
+    try:
+        from curl_cffi import requests as cffi_requests
+        _cffi_ok = True
+    except ImportError:
+        _cffi_ok = False
+
     url = f"https://api.ashbyhq.com/posting-api/job-board/{company_slug}"
     headers = {
-        **USER_AGENT,
         "Accept": "application/json, text/plain, */*",
         "Referer": f"https://jobs.ashbyhq.com/{company_slug}",
         "Origin": "https://jobs.ashbyhq.com",
@@ -132,7 +137,10 @@ def fetch_ashby(company_slug):
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site",
     }
-    r = requests.get(url, headers=headers, timeout=30)
+    if _cffi_ok:
+        r = cffi_requests.get(url, headers=headers, impersonate="chrome120", timeout=30)
+    else:
+        r = requests.get(url, headers={**USER_AGENT, **headers}, timeout=30)
     r.raise_for_status()
     if not r.content.strip():
         raise ValueError(f"Ashby returned empty body for '{company_slug}' (likely Cloudflare block)")

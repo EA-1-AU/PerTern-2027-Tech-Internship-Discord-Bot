@@ -23,7 +23,7 @@ Duolingo,greenhouse,duolingo,,
 Roblox,greenhouse,roblox,,1
 Bungie,greenhouse,bungie,,
 Scopely,greenhouse,scopely,,
-Niantic,greenhouse,niantic,,
+Niantic,smartrecruiters,Niantic,,
 Activision Blizzard,workday,,https://activision.wd1.myworkdayjobs.com/External,
 Electronic Arts,workday,,https://ea.wd3.myworkdayjobs.com/EA_Careers,
 Take-Two Interactive,workday,,https://taketwo.wd1.myworkdayjobs.com/External,
@@ -85,8 +85,8 @@ Runway,ashby,runway,,
 Pinecone,ashby,pinecone,,
 Replit,ashby,replit,,
 Anduril,greenhouse,andurilindustries,,1
-Retool,greenhouse,retool,,
-Rippling,custom,,https://ats.rippling.com/rippling-careers/jobs,
+Retool,smartrecruiters,Retool,,
+Rippling,smartrecruiters,Rippling,,
 Writer,ashby,writer,,
 Cognition,ashby,cognition,,
 Physical Intelligence,ashby,physicalintelligence,,
@@ -254,7 +254,7 @@ PNC,custom,,https://careers.pnc.com/global/en/search-results?keywords=intern,
 Goldman Sachs,custom,,https://www.goldmansachs.com/careers/students,
 Morgan Stanley,custom,,https://www.morganstanley.com/careers/career-opportunities-search,
 Fidelity,custom,,https://jobs.fidelity.com/,
-Discover,custom,,https://jobs.discover.com/search-jobs/intern,
+Discover,smartrecruiters,Discover,,
 Lockheed Martin,custom,,https://www.lockheedmartinjobs.com/search-jobs/intern,
 Northrop Grumman,custom,,https://www.northropgrumman.com/jobs/?search=intern,
 Boeing,custom,,https://jobs.boeing.com/search-jobs/intern,
@@ -333,7 +333,6 @@ Axonius,greenhouse,axonius,,
 Orca Security,greenhouse,orcasecurity,,
 Cribl,greenhouse,cribl,,
 Torq,greenhouse,torq,,
-
 Armis,workday,,https://armis.wd1.myworkdayjobs.com/External,
 Illumio,ashby,illumio,,
 Vectra AI,workday,,https://vectra.wd1.myworkdayjobs.com/External,
@@ -403,14 +402,14 @@ Fivetran,greenhouse,fivetran,,
 Airbyte,ashby,airbyte,,
 Astronomer,ashby,astronomer,,
 Harness,greenhouse,harnessinc,,
-Peraton,icims,,https://careers-peraton.icims.com/jobs/search,0
-General Dynamics Mission Systems,icims,,https://careers-gdms.icims.com/jobs/search,0
-General Dynamics IT,icims,,https://careers-gdit.icims.com/jobs/search,0
+Peraton,smartrecruiters,Peraton,,0
+General Dynamics Mission Systems,smartrecruiters,GDMS,,0
+General Dynamics IT,smartrecruiters,GDIT,,0
 Unisys,workday,,https://unisys.wd5.myworkdayjobs.com/External,0
 CGI,workday,,https://cgi.wd3.myworkdayjobs.com/CGI_US_Careers,0
 Maximus,workday,,https://maximus.wd1.myworkdayjobs.com/MaximusCareers,0
 Amentum,workday,,https://amentum.wd5.myworkdayjobs.com/Amentum,0
-Noblis,icims,,https://jobs-noblis.icims.com/jobs/search,0
+Noblis,smartrecruiters,Noblis,,0
 Box,greenhouse,boxinc,,0
 Fiserv,workday,,https://fiserv.wd5.myworkdayjobs.com/EXT,0
 Global Payments,workday,,https://globalpayments.wd1.myworkdayjobs.com/External,0
@@ -418,60 +417,53 @@ NCR Voyix,workday,,https://ncrvoyix.wd5.myworkdayjobs.com/NCRVoyix,0
 Veritas Technologies,workday,,https://veritas.wd1.myworkdayjobs.com/careers,0
 OpenText,workday,,https://opentext.wd3.myworkdayjobs.com/careers,0
 Micro Focus,workday,,https://microfocus.wd3.myworkdayjobs.com/MicroFocusCareers,0
-
 Elastic,greenhouse,elastic,,0
 Fastly,greenhouse,fastly,,0
 Kong,ashby,kong,,0
 dbt Labs,greenhouse,dbtlabsinc,,0
 Monte Carlo,ashby,montecarlodata,,0
 Immuta,lever,immuta,,0
-
-Semgrep,greenhouse,semgrep,,0
-
-# ── AI / LLM companies ───────────────────────────────────────────────────────
-Character AI,greenhouse,characterai,,0
-ElevenLabs,greenhouse,elevenlabs,,0
-Mistral AI,greenhouse,mistral,,0
-Together AI,greenhouse,together-ai,,0
-Groq,greenhouse,groq,,0
-Pika Labs,greenhouse,pika-labs,,0
-Luma AI,greenhouse,luma-ai,,0
-
-# ── Cybersecurity ─────────────────────────────────────────────────────────────
+Semgrep,smartrecruiters,Semgrep,,0
+# ── AI / LLM companies ───────────────────────────────────────────────────────,,,,
+Character AI,smartrecruiters,CharacterAI,,0
+ElevenLabs,smartrecruiters,ElevenLabs,,0
+Mistral AI,smartrecruiters,Mistral,,0
+Together AI,smartrecruiters,TogetherAI,,0
+Groq,smartrecruiters,Groq,,0
+Pika Labs,smartrecruiters,PikaLabs,,0
+Luma AI,smartrecruiters,LumaAI,,0
+# ── Cybersecurity ─────────────────────────────────────────────────────────────,,,,
 Huntress,greenhouse,huntress,,1
-Noname Security,greenhouse,noname-security,,0
-AttackIQ,greenhouse,attackiq,,0
+Noname Security,smartrecruiters,NonameSecurityInc,,0
+AttackIQ,smartrecruiters,AttackIQ,,0
 Dragos,greenhouse,dragos,,1
-Claroty,greenhouse,claroty,,0
-Nozomi Networks,greenhouse,nozomi-networks,,0
-LogRhythm,greenhouse,logrhythm,,0
-Malwarebytes,greenhouse,malwarebytes,,0
-Gen Digital,greenhouse,gendigital,,0
+Claroty,smartrecruiters,Claroty,,0
+Nozomi Networks,smartrecruiters,NozomiNetworks,,0
+LogRhythm,smartrecruiters,LogRhythm,,0
+Malwarebytes,smartrecruiters,Malwarebytes,,0
+Gen Digital,smartrecruiters,GenDigital,,0
 Keeper Security,greenhouse,keepersecurity,,0
-Cyolo,greenhouse,cyolo,,0
-Pentera,greenhouse,pentera,,0
-Devo,greenhouse,devo,,0
-
-# ── Quant / Trading firms ─────────────────────────────────────────────────────
+Cyolo,smartrecruiters,Cyolo,,0
+Pentera,smartrecruiters,Pentera,,0
+Devo,smartrecruiters,Devo,,0
+# ── Quant / Trading firms ─────────────────────────────────────────────────────,,,,
 IMC Trading,greenhouse,imc,,1
 Point72,greenhouse,point72,,1
 AQR Capital,greenhouse,aqr,,0
-
-# ── Investment banks ──────────────────────────────────────────────────────────
+# ── Investment banks ──────────────────────────────────────────────────────────,,,,
 Deutsche Bank,workday,,https://db.wd3.myworkdayjobs.com/DBWebsite,0
-Barclays,workday,,https://barclays.wd3.myworkdayjobs.com/campus,0
+Barclays,smartrecruiters,Barclays,,0
 UBS,workday,,https://ubs.wd3.myworkdayjobs.com/UBS_Experienced_Professionals,0
 Jefferies,workday,,https://jefferies.wd1.myworkdayjobs.com/jefferies,0
 Lazard,workday,,https://lazard.wd1.myworkdayjobs.com/experienced,0
-Houlihan Lokey,workday,,https://hl.wd1.myworkdayjobs.com/HL_External,0
-RBC Capital Markets,workday,,https://rbc.wd3.myworkdayjobs.com/RBC_Careers,0
-BMO,workday,,https://bmo.wd3.myworkdayjobs.com/External_Career_Site,0
+Houlihan Lokey,smartrecruiters,HoulihanLokey,,0
+RBC Capital Markets,smartrecruiters,RBC,,0
+BMO,smartrecruiters,BMO,,0
 TD Bank,workday,,https://td.wd3.myworkdayjobs.com/TD_Bank_Careers,0
-William Blair,greenhouse,william-blair,,0
-Piper Sandler,workday,,https://pipersandler.wd5.myworkdayjobs.com/en-US/careers,0
+William Blair,smartrecruiters,WilliamBlair,,0
+Piper Sandler,smartrecruiters,PiperSandler,,0
 Baird,workday,,https://baird.wd5.myworkdayjobs.com/Baird_Careers,0
-
-# ── Cloud / DevOps / Data infra ───────────────────────────────────────────────
+# ── Cloud / DevOps / Data infra ───────────────────────────────────────────────,,,,
 Pulumi,ashby,pulumi,,0
 Dagster,ashby,dagster,,0
 Prefect,ashby,prefect,,0
@@ -482,136 +474,119 @@ Buf,ashby,buf,,0
 Dagger,ashby,dagger,,0
 Encore,ashby,encore,,0
 Speakeasy,ashby,speakeasy,,0
-
-# ── Semiconductors / Hardware ─────────────────────────────────────────────────
+# ── Semiconductors / Hardware ─────────────────────────────────────────────────,,,,
 Arm Holdings,workday,,https://arm.wd1.myworkdayjobs.com/Arm_Careers,0
-Microchip Technology,workday,,https://microchip.wd1.myworkdayjobs.com/en-US/microchipjobs,0
+Microchip Technology,smartrecruiters,MicrochipTechnology,,0
 onsemi,workday,,https://onsemi.wd1.myworkdayjobs.com/onsemi_Careers,0
 Cirrus Logic,workday,,https://cirruslogic.wd1.myworkdayjobs.com/Cirrus_Logic_Careers,0
-Silicon Labs,workday,,https://silabs.wd1.myworkdayjobs.com/en-US/SiLabsCareers,0
+Silicon Labs,smartrecruiters,SiliconLabs,,0
 Lattice Semiconductor,workday,,https://lattice.wd1.myworkdayjobs.com/LatticesemiCareers,0
 MACOM,workday,,https://macom.wd1.myworkdayjobs.com/MACOM,0
-Semtech,workday,,https://semtech.wd1.myworkdayjobs.com/Semtech_Careers,0
+Semtech,smartrecruiters,Semtech,,0
 Renesas,workday,,https://renesas.wd3.myworkdayjobs.com/Careers,0
-
-# ── Biotech / Pharma / Health tech ────────────────────────────────────────────
-Moderna,workday,,https://modernatx.wd1.myworkdayjobs.com/MNA,0
-Illumina,workday,,https://illumina.wd1.myworkdayjobs.com/illumina,0
+# ── Biotech / Pharma / Health tech ────────────────────────────────────────────,,,,
+Moderna,smartrecruiters,Moderna,,0
+Illumina,smartrecruiters,Illumina,,0
 Veeva Systems,workday,,https://veeva.wd1.myworkdayjobs.com/veeva,0
-Flatiron Health,greenhouse,flatiron-health,,0
-Tempus,greenhouse,tempus,,0
-Guardant Health,greenhouse,guardanthealth,,0
-
-# ── Fintech ───────────────────────────────────────────────────────────────────
+Flatiron Health,smartrecruiters,FlatironHealth,,0
+Tempus,smartrecruiters,Tempus,,0
+Guardant Health,smartrecruiters,Guardant,,0
+# ── Fintech ───────────────────────────────────────────────────────────────────,,,,
 Marqeta,greenhouse,marqeta,,0
 Klarna,smartrecruiters,klarna,,0
 Adyen,greenhouse,adyen,,0
 nCino,workday,,https://ncino.wd1.myworkdayjobs.com/nCino_Careers,0
 Q2 Holdings,workday,,https://q2ebanking.wd5.myworkdayjobs.com/Q2,0
 WEX,workday,,https://wexinc.wd1.myworkdayjobs.com/WEX,0
-
-# ── Consulting ────────────────────────────────────────────────────────────────
+# ── Consulting ────────────────────────────────────────────────────────────────,,,,
 Oliver Wyman,workday,,https://oliverwyman.wd5.myworkdayjobs.com/OliverWyman,0
 Kearney,workday,,https://kearney.wd1.myworkdayjobs.com/Kearney,0
 ZS Associates,workday,,https://zs.wd5.myworkdayjobs.com/ZS,0
 FTI Consulting,workday,,https://fticonsulting.wd1.myworkdayjobs.com/FTIConsulting,0
-L.E.K. Consulting,greenhouse,lek,,0
-West Monroe,greenhouse,westmonroe,,0
-
-# ── Networking / Telecom ──────────────────────────────────────────────────────
+L.E.K. Consulting,smartrecruiters,LEK,,0
+West Monroe,smartrecruiters,WestMonroe,,0
+# ── Networking / Telecom ──────────────────────────────────────────────────────,,,,
 F5 Networks,workday,,https://f5.wd5.myworkdayjobs.com/f5jobs,0
 Extreme Networks,workday,,https://extremenetworks.wd1.myworkdayjobs.com/careers,0
 Ciena,workday,,https://ciena.wd5.myworkdayjobs.com/careers,0
-Calix,workday,,https://calix.wd1.myworkdayjobs.com/en-US/Calix_Careers,0
+Calix,smartrecruiters,Calix,,0
 NetScout,workday,,https://netscout.wd5.myworkdayjobs.com/NetScout,0
-
-# ── Tesla / EV / Autonomous ───────────────────────────────────────────────────
-# Tesla uses JS-gated custom career page — covered via Simplify
-Aurora,greenhouse,aurora-innovation,,0
-Mobileye,greenhouse,mobileye,,0
-Zoox,greenhouse,zoox,,0
+# ── Tesla / EV / Autonomous ───────────────────────────────────────────────────,,,,
+# Tesla uses JS-gated custom career page — covered via Simplify,,,,
+Aurora,smartrecruiters,Aurora,,0
+Mobileye,smartrecruiters,Mobileye,,0
+Zoox,smartrecruiters,Zoox,,0
 Nuro,greenhouse,nuro,,0
-May Mobility,greenhouse,may-mobility,,0
-
-
-# ── Aerospace ─────────────────────────────────────────────────────────────────
+May Mobility,smartrecruiters,MayMobility,,0
+# ── Aerospace ─────────────────────────────────────────────────────────────────,,,,
 Blue Origin,workday,,https://blueorigin.wd5.myworkdayjobs.com/BlueOrigin,1
 Rocket Lab,greenhouse,rocketlab,,1
-Joby Aviation,greenhouse,joby-aviation,,0
-Sierra Nevada Corporation,workday,,https://snc.wd1.myworkdayjobs.com/SNC_External,0
-Relativity Space,greenhouse,relativity-space,,0
-Hermeus,greenhouse,hermeus,,0
-Sarcos Technology,greenhouse,sarcos,,0
-
-# ── Energy / Utilities ────────────────────────────────────────────────────────
-Chevron,workday,,https://chevron.wd5.myworkdayjobs.com/Chevron,0
-Shell,workday,,https://shell.wd3.myworkdayjobs.com/ShellExternal,0
+Joby Aviation,smartrecruiters,JobyAviation,,0
+Sierra Nevada Corporation,smartrecruiters,SierraNevadaCorporation,,0
+Relativity Space,smartrecruiters,RelatitvitySpace,,0
+Hermeus,smartrecruiters,Hermeus,,0
+Sarcos Technology,smartrecruiters,Sarcos,,0
+# ── Energy / Utilities ────────────────────────────────────────────────────────,,,,
+Chevron,smartrecruiters,Chevron,,0
+Shell,workday,,https://shell.wd3.myworkdayjobs.com/ShellCareers,0
 BP,workday,,https://bp.wd3.myworkdayjobs.com/BP_External_Careers,0
 NextEra Energy,workday,,https://nexteraenergy.wd5.myworkdayjobs.com/jobs,0
 Duke Energy,workday,,https://duke-energy.wd5.myworkdayjobs.com/duke-energy-careers,0
 Dominion Energy,workday,,https://dominionenergy.wd5.myworkdayjobs.com/Dominion_Energy,0
 Constellation Energy,workday,,https://constellationenergy.wd5.myworkdayjobs.com/constellation,0
-GE Vernova,workday,,https://gevernova.wd5.myworkdayjobs.com/GEVernova,0
-Siemens Energy,workday,,https://siemensenergy.wd3.myworkdayjobs.com/SiemensEnergyCareers,0
+GE Vernova,smartrecruiters,GEVernova,,0
+Siemens Energy,smartrecruiters,SiemensEnergy,,0
 National Grid,workday,,https://nationalgrid.wd3.myworkdayjobs.com/NG_External_Careers,0
 Southern Company,workday,,https://southerncompany.wd5.myworkdayjobs.com/SouthernCompanyJobs,0
 Exelon,workday,,https://exelon.wd5.myworkdayjobs.com/ExelonCareers,0
-
-# ── SaaS / Productivity ───────────────────────────────────────────────────────
-Zendesk,greenhouse,zendesk,,0
-Freshworks,greenhouse,freshworks,,0
-Monday.com,greenhouse,monday,,0
-ClickUp,greenhouse,clickup-1,,0
+# ── SaaS / Productivity ───────────────────────────────────────────────────────,,,,
+Zendesk,smartrecruiters,Zendesk,,0
+Freshworks,smartrecruiters,Freshworks,,0
+Monday.com,smartrecruiters,Monday,,0
+ClickUp,smartrecruiters,ClickUp,,0
 Webflow,greenhouse,webflow,,0
-Coda,greenhouse,coda,,0
+Coda,smartrecruiters,Coda,,0
 Intercom,greenhouse,intercom,,0
-Loom,greenhouse,loom,,0
-Miro,greenhouse,miro,,0
+Loom,smartrecruiters,Loom,,0
+Miro,smartrecruiters,Miro,,0
 Typeform,greenhouse,typeform,,0
 Calendly,greenhouse,calendly,,0
-Superhuman,greenhouse,superhuman,,0
-
-# ── Cybersecurity backup / recovery ───────────────────────────────────────────
+Superhuman,smartrecruiters,Superhuman,,0
+# ── Cybersecurity backup / recovery ───────────────────────────────────────────,,,,
 Druva,greenhouse,druva,,0
-Commvault,workday,,https://commvault.wd1.myworkdayjobs.com/Commvault_Careers,0
-
-# ── Healthcare devices / diagnostics ─────────────────────────────────────────
-Dexcom,workday,,https://dexcom.wd1.myworkdayjobs.com/DXCM,0
+Commvault,workday,,https://commvault.wd1.myworkdayjobs.com/Commvault,0
+# ── Healthcare devices / diagnostics ─────────────────────────────────────────,,,,
+Dexcom,workday,,https://dexcom.wd1.myworkdayjobs.com/Dexcom,0
 Becton Dickinson,workday,,https://bd.wd1.myworkdayjobs.com/BD,0
-Edwards Lifesciences,workday,,https://edwards.wd5.myworkdayjobs.com/Edwards,0
-Baxter International,workday,,https://baxter.wd1.myworkdayjobs.com/Baxter_External,0
+Edwards Lifesciences,smartrecruiters,EdwardsLifesciences,,0
+Baxter International,workday,,https://baxter.wd1.myworkdayjobs.com/Baxter,0
 Insulet,workday,,https://insulet.wd1.myworkdayjobs.com/Insulet_Careers,0
 Align Technology,workday,,https://aligntech.wd1.myworkdayjobs.com/AlignTechCareers,0
-Penumbra,greenhouse,penumbra,,0
+Penumbra,smartrecruiters,Penumbra,,0
 Masimo,workday,,https://masimo.wd5.myworkdayjobs.com/masimo,0
-
-# ── Media / Entertainment ─────────────────────────────────────────────────────
+# ── Media / Entertainment ─────────────────────────────────────────────────────,,,,
 Paramount,workday,,https://paramount.wd5.myworkdayjobs.com/Paramount_External,0
 AMC Networks,workday,,https://amcnetworks.wd5.myworkdayjobs.com/AMCNetworksCareers,0
-iHeartMedia,workday,,https://iheartmedia.wd5.myworkdayjobs.com/iHeartMedia,0
+iHeartMedia,smartrecruiters,iHeartMedia,,0
 Discovery,workday,,https://discovery.wd5.myworkdayjobs.com/careers,0
-
-# ── Retail / Consumer ─────────────────────────────────────────────────────────
+# ── Retail / Consumer ─────────────────────────────────────────────────────────,,,,
 Kroger,workday,,https://kroger.wd5.myworkdayjobs.com/kroger,0
 Dollar General,workday,,https://dollargeneral.wd5.myworkdayjobs.com/careers,0
-Nike,workday,,https://nike.wd1.myworkdayjobs.com/nike,0
+Nike,smartrecruiters,Nike,,0
 Adidas,workday,,https://adidas.wd3.myworkdayjobs.com/adidas-careers,0
 Under Armour,workday,,https://underarmour.wd5.myworkdayjobs.com/careers,0
 Estee Lauder,workday,,https://esteelauder.wd5.myworkdayjobs.com/ELC,0
-
-# ── BMW / Auto OEMs ───────────────────────────────────────────────────────────
+# ── BMW / Auto OEMs ───────────────────────────────────────────────────────────,,,,
 BMW,workday,,https://bmwgroup.wd3.myworkdayjobs.com/BMWGROUPJOBS,0
 Mercedes-Benz,workday,,https://mercedes-benz.wd12.myworkdayjobs.com/MBUSA,0
-Stellantis,workday,,https://stellantis.wd3.myworkdayjobs.com/Stellantis,0
-
-# ── Legal tech / HR tech ──────────────────────────────────────────────────────
+Stellantis,smartrecruiters,Stellantis,,0
+# ── Legal tech / HR tech ──────────────────────────────────────────────────────,,,,
 Verint Systems,workday,,https://verint.wd1.myworkdayjobs.com/Verint_Careers,0
 Genesys,workday,,https://genesys.wd1.myworkdayjobs.com/Genesys,0
-NICE Systems,workday,,https://nice.wd3.myworkdayjobs.com/NICE,0
+NICE Systems,smartrecruiters,NICE,,0
 Ceridian,workday,,https://ceridian.wd1.myworkdayjobs.com/Ceridian,0
 Paylocity,workday,,https://paylocity.wd1.myworkdayjobs.com/paylocity,0
 Paychex,workday,,https://paychex.wd5.myworkdayjobs.com/Paychex,0
-
 Summer 2027 Community List,github_md,,https://raw.githubusercontent.com/sndsh404/summer-2027-internships/main/README.md,1
 vanshb03 Summer 2027,github_md,,https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/dev/README.md,1
 vanshb03 Off-Season 2027,github_md,,https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/dev/OFFSEASON_README.md,1
