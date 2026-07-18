@@ -1839,7 +1839,7 @@ async def slash_find(interaction: discord.Interaction, query: str):
     await interaction.followup.send(embed=em, ephemeral=True)
 
 
-@tree.command(name="export", description="DM you a CSV of all applied/interview/offer jobs")
+@tree.command(name="export", description="Download a CSV of all applied/interview/offer jobs")
 async def slash_export(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
@@ -1856,12 +1856,11 @@ async def slash_export(interaction: discord.Interaction):
     writer.writerows(rows)
     buf.seek(0)
     fname = f"pertern_export_{datetime.datetime.now().strftime('%Y%m%d')}.csv"
-    dm = await _get_dm()
-    await dm.send(
+    await interaction.followup.send(
         content=f"📎 Your PerTern export — **{len(rows)} jobs**",
         file=discord.File(fp=io.BytesIO(buf.getvalue().encode()), filename=fname),
+        ephemeral=True,
     )
-    await interaction.followup.send("Export sent to your DMs!", ephemeral=True)
 
 
 @tree.command(name="log", description="Recent bot logs + full company error report as CSV")
