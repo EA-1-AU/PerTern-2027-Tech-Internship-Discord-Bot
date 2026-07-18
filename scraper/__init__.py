@@ -23,6 +23,7 @@ from scraper.ats import (
     fetch_adp,
     fetch_icims,
     fetch_github_md_table,
+    fetch_internatlas,
 )
 
 log = logging.getLogger("pertern.scraper")
@@ -39,6 +40,7 @@ _FETCHERS = {
     "adp":             lambda c: fetch_adp(c),
     "icims":           lambda c: fetch_icims(c),
     "github_md":       lambda c: fetch_github_md_table(c),
+    "internatlas":     lambda c: fetch_internatlas(c),
 }
 
 # Seconds to wait between consecutive requests to the same ATS to avoid rate limits

@@ -355,6 +355,50 @@ def fetch_github_md_table(company):
     return jobs
 
 
+def fetch_internatlas(company):
+    """
+    Pulls the compiled internships.json from github.com/sonak11/internatlas.
+    One HTTP request for all 700+ curated 2027 internships.
+    company["url"] should point to the raw JSON export URL.
+    """
+    url = company.get("url") or (
+        "https://raw.githubusercontent.com/sonak11/internatlas/main/generated/exports/internships.json"
+    )
+    r = requests.get(url, headers=USER_AGENT, timeout=60)
+    r.raise_for_status()
+    data = r.json()
+    jobs = []
+    for item in data.get("internships", []):
+        year = item.get("year")
+        if year and int(year) != 2027:
+            continue
+        role = item.get("role", "")
+        if not is_internship_title(role):
+            continue
+        apply_url = item.get("apply_url", "")
+        if not apply_url:
+            continue
+        comp = (item.get("company") or {}).get("name", "") or company.get("name", "")
+        locs = item.get("locations") or []
+        if locs:
+            location = ", ".join(
+                filter(None, [locs[0].get("city"), locs[0].get("state"), locs[0].get("country")])
+            )
+        else:
+            location = item.get("work_mode", "")
+        jobs.append({
+            "job_id":      f"internatlas:{item.get('id', make_id('internatlas', comp, role, apply_url))}",
+            "company":     comp,
+            "source":      "internatlas",
+            "title":       role,
+            "location":    location,
+            "url":         apply_url,
+            "term":        item.get("season", ""),
+            "description": "",
+        })
+    return jobs
+
+
 def looks_like_job_link(title, href):
     text = f"{title} {href}".lower()
     if not is_internship_title(text):
