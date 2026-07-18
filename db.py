@@ -320,6 +320,24 @@ def job_exists_by_url(company, url):
         return cur.fetchone() is not None
 
 
+def job_exists_by_url_any(url: str) -> bool:
+    with db_cursor() as cur:
+        cur.execute("SELECT 1 FROM jobs WHERE url=?", (url,))
+        return cur.fetchone() is not None
+
+
+def get_all_job_urls(user_id: str) -> set:
+    """URLs of all jobs that have been skipped by this user, for URL-level dedup."""
+    with db_cursor() as cur:
+        cur.execute(
+            """SELECT j.url FROM jobs j
+               JOIN user_jobs uj ON j.job_id = uj.job_id
+               WHERE uj.user_id=? AND uj.status='skip' AND j.url != ''""",
+            (user_id,),
+        )
+        return {r[0] for r in cur.fetchall()}
+
+
 def insert_job(job_id, company, source, title, location, url,
                description="", category=None, subcategory=None,
                term=None, deadline=None, salary=None):

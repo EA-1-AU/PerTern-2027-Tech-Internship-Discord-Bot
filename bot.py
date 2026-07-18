@@ -145,11 +145,24 @@ tree   = discord.app_commands.CommandTree(client)
 
 _seen_job_ids: set[str] = set()
 _seen_title_keys: set[str] = set()  # dedupe by company+normalized-title
+_seen_urls: set[str] = set()        # dedupe by apply URL
 
 
 def _title_key(company: str, title: str) -> str:
-    """Normalize company+title for duplicate detection."""
-    t = re.sub(r'[^a-z0-9]', '', title.lower())
+    """Normalize company+title for duplicate detection.
+
+    Strips year, season, and filler words so 'SWE Intern – Summer 2027'
+    matches 'SWE Internship' at the same company.
+    """
+    t = title.lower()
+    # Remove year (2024-2030)
+    t = re.sub(r'\b20[2-3]\d\b', '', t)
+    # Remove season
+    t = re.sub(r'\b(summer|fall|spring|winter|autumn)\b', '', t)
+    # Remove common filler
+    t = re.sub(r'\b(internship|intern|co-op|coop|new grad|ng|part.?time|full.?time|us|usa|remote|onsite|hybrid)\b', '', t)
+    # Strip non-alphanumeric
+    t = re.sub(r'[^a-z0-9]', '', t)
     c = re.sub(r'[^a-z0-9]', '', company.lower())
     return f"{c}:{t}"
 
@@ -1180,8 +1193,9 @@ async def _run_scan_inner(label: str = "") -> int:
 
     _blacklist = set(c.lower() for c in db.get_blacklist(str(MY_USER_ID)))
 
-    # Build a set of title keys for jobs the user already skipped so we don't re-surface them
+    # Build skip sets: job IDs, title keys, and URLs of everything user has skipped
     _skipped_ids   = db.get_skipped_job_ids(str(MY_USER_ID))
+    _skipped_urls  = db.get_all_job_urls(str(MY_USER_ID))
     _skipped_tkeys: set[str] = set()
     for _sjid in _skipped_ids:
         _sjob = db.get_job(_sjid)
@@ -1200,24 +1214,31 @@ async def _run_scan_inner(label: str = "") -> int:
             match, reason = _matches_me(job)
             if not match:
                 continue
-            jid = job.get("job_id", "")
+            jid  = job.get("job_id", "")
+            jurl = job.get("url", "")
+            tkey = _title_key(job.get("company", ""), job.get("title", ""))
+            # Already processed this scan
             if jid in _seen_job_ids:
                 continue
-            # Skip if user already skipped this exact job or same role at same company
-            if jid in _skipped_ids:
+            # User previously skipped this job (by ID, URL, or same role at same company)
+            if jid in _skipped_ids or jurl in _skipped_urls or tkey in _skipped_tkeys:
                 _seen_job_ids.add(jid)
+                if jurl:
+                    _seen_urls.add(jurl)
                 continue
-            tkey = _title_key(job.get("company",""), job.get("title",""))
-            if tkey in _skipped_tkeys:
-                continue
-            if db.job_exists(jid):
+            # Already in DB (seen in a prior scan)
+            if db.job_exists(jid) or (jurl and db.job_exists_by_url_any(jurl)):
                 _seen_job_ids.add(jid)
+                if jurl:
+                    _seen_urls.add(jurl)
                 continue
-            # Dedupe by company+title (catches same role across multiple ATS sources)
-            if tkey in _seen_title_keys:
+            # Dedupe within this scan by title key and URL
+            if tkey in _seen_title_keys or (jurl and jurl in _seen_urls):
                 continue
             _seen_title_keys.add(tkey)
             _seen_job_ids.add(jid)
+            if jurl:
+                _seen_urls.add(jurl)
             db.insert_job(
                 jid,
                 job.get("company", ""), job.get("source", ""),
@@ -1651,6 +1672,14 @@ async def slash_check(interaction: discord.Interaction, company: str = ""):
         raw = await loop.run_in_executor(None, _single_scan)
 
         # Filter and insert matching jobs
+        _skip_ids   = db.get_skipped_job_ids(str(MY_USER_ID))
+        _skip_urls  = db.get_all_job_urls(str(MY_USER_ID))
+        _skip_tkeys: set[str] = set()
+        for _sjid in _skip_ids:
+            _sjob = db.get_job(_sjid)
+            if _sjob:
+                _skip_tkeys.add(_title_key(_sjob.get("company", ""), _sjob.get("title", "")))
+
         new_count = 0
         for job in raw:
             if not _is_internship(job.get("title", "")):
@@ -1661,15 +1690,23 @@ async def slash_check(interaction: discord.Interaction, company: str = ""):
             match, _ = _matches_me(job)
             if not match:
                 continue
-            jid = job.get("job_id", "")
-            if jid in _seen_job_ids or db.job_exists(jid):
+            jid  = job.get("job_id", "")
+            jurl = job.get("url", "")
+            tkey = _title_key(job.get("company", ""), job.get("title", ""))
+            if jid in _seen_job_ids:
+                continue
+            if jid in _skip_ids or jurl in _skip_urls or tkey in _skip_tkeys:
                 _seen_job_ids.add(jid)
                 continue
-            tkey = _title_key(job.get("company", ""), job.get("title", ""))
-            if tkey in _seen_title_keys:
+            if db.job_exists(jid) or (jurl and db.job_exists_by_url_any(jurl)):
+                _seen_job_ids.add(jid)
+                continue
+            if tkey in _seen_title_keys or (jurl and jurl in _seen_urls):
                 continue
             _seen_title_keys.add(tkey)
             _seen_job_ids.add(jid)
+            if jurl:
+                _seen_urls.add(jurl)
             db.insert_job(
                 jid,
                 job.get("company", ""), job.get("source", ""),
