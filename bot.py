@@ -266,6 +266,21 @@ def _is_us_location(location: str) -> bool:
     return any(ind in loc for ind in _US_INDICATORS)
 
 
+_location_prefs_cache: list[str] = []
+_location_prefs_loaded = False
+
+def _get_location_prefs() -> list[str]:
+    global _location_prefs_cache, _location_prefs_loaded
+    if not _location_prefs_loaded:
+        _location_prefs_cache = db.get_user_locations(str(MY_USER_ID))
+        _location_prefs_loaded = True
+    return _location_prefs_cache
+
+def _reload_location_prefs():
+    global _location_prefs_loaded
+    _location_prefs_loaded = False
+
+
 def _matches_me(job: dict) -> tuple[bool, str]:
     title    = job.get("title", "").lower()
     cat      = job.get("category", "") or ""
@@ -277,6 +292,13 @@ def _matches_me(job: dict) -> tuple[bool, str]:
         return False, ""
     if REQUIRE_SALARY and not salary:
         return False, ""
+
+    # Location preference filter (if set)
+    loc_prefs = _get_location_prefs()
+    if loc_prefs:
+        loc_lower = location.lower()
+        if not any(p.lower() in loc_lower for p in loc_prefs):
+            return False, ""
 
     if any(w in company for w in MY_COMPANY_WATCHLIST):
         return True, f"Watchlist: {job.get('company','')}"
@@ -429,8 +451,19 @@ def _make_job_embed(job: dict, reason: str = "", index: int = 0, total: int = 0,
     if url:      em.add_field(name="🔗 Apply",    value=f"[Open listing]({url})", inline=False)
     if status:   em.add_field(name="📝 Status",   value=f"{status_prefix}{status.title()}", inline=False)
 
+    # Job age
+    first_seen = job.get("first_seen", "")
+    age_str = ""
+    if first_seen:
+        try:
+            fs = datetime.datetime.fromisoformat(str(first_seen).replace("Z", "+00:00"))
+            days = (datetime.datetime.now(timezone.utc) - fs.replace(tzinfo=fs.tzinfo or timezone.utc)).days
+            age_str = f"today" if days == 0 else f"{days}d ago"
+        except Exception:
+            pass
+
     counter = f"{index + 1}/{total} · " if total else ""
-    em.set_footer(text=f"PerTern · {counter}ID: {job.get('job_id','')}")
+    em.set_footer(text=f"PerTern · {counter}Found {age_str} · ID: {job.get('job_id','')[:8]}")
     return em
 
 
@@ -448,6 +481,26 @@ _EMPTY_QUOTES = [
 ]
 
 
+def _season_countdown() -> str:
+    today = datetime.date.today()
+    peak  = datetime.date(2026, 9, 1)   # when most 2027 apps open
+    days  = (peak - today).days
+    if days > 0:
+        return f"📅 Peak season opens in **{days} days** (Sept 1)"
+    elif days > -120:
+        return "🔥 **Peak season is live** — new postings daily!"
+    return ""
+
+
+def _weekly_goal_line(uid: str) -> str:
+    target  = db.get_user_goal(uid)
+    applied = db.get_apps_this_week(uid)
+    filled  = min(applied, target)
+    bar     = "█" * filled + "░" * max(0, target - filled)
+    pct     = int(applied / target * 100) if target else 0
+    return f"🎯 Weekly goal `{bar}` **{applied}/{target}** ({pct}%)"
+
+
 def _next_scan_timestamp() -> str:
     """Return a Discord relative timestamp string for the next scheduled scan."""
     nxt = scan_loop.next_iteration
@@ -459,12 +512,15 @@ def _next_scan_timestamp() -> str:
 
 def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Embed:
     total      = sum(cats.values())
+    uid        = str(MY_USER_ID)
     total_idx  = db.get_job_count()
-    applied    = len(db.get_user_jobs_by_status(str(MY_USER_ID), "applied"))
-    interviews = len(db.get_user_jobs_by_status(str(MY_USER_ID), "interview"))
-    offers     = len(db.get_user_jobs_by_status(str(MY_USER_ID), "offer"))
+    applied    = len(db.get_user_jobs_by_status(uid, "applied"))
+    interviews = len(db.get_user_jobs_by_status(uid, "interview"))
+    offers     = len(db.get_user_jobs_by_status(uid, "offer"))
     next_scan  = _next_scan_timestamp()
     next_line  = f"\n🔄 Next scan {next_scan}" if next_scan else ""
+    season     = _season_countdown()
+    goal_line  = _weekly_goal_line(uid)
 
     if not cats:
         quote = _EMPTY_QUOTES[datetime.datetime.now().minute % len(_EMPTY_QUOTES)]
@@ -472,7 +528,9 @@ def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Emb
             title="✨ You're all caught up!",
             description=(
                 f"No unreviewed internships right now.{next_line}\n\n"
-                f"*{quote}*"
+                f"{goal_line}\n"
+                + (f"{season}\n" if season else "")
+                + f"\n*{quote}*"
             ),
             color=discord.Color.from_rgb(88, 101, 242),
             timestamp=datetime.datetime.now(timezone.utc),
@@ -493,6 +551,9 @@ def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Emb
     if new_count:
         desc = f"🆕 **+{new_count} new this scan!**\n\n" + desc
     desc += f"\n\n**{total} unreviewed** · Pick a category below to start browsing.{next_line}"
+    desc += f"\n{goal_line}"
+    if season:
+        desc += f"\n{season}"
 
     em = discord.Embed(
         title="📋 PerTern — Internship Feed",
@@ -556,6 +617,34 @@ class SnoozeModal(discord.ui.Modal, title="Snooze this job"):
         db.ensure_user_job(uid, jid)
         db.set_user_status(uid, jid, "snoozed")
         await _advance_after_mark(interaction, "snoozed")
+
+
+class RemindModal(discord.ui.Modal, title="Set a reminder"):
+    when = discord.ui.TextInput(
+        label="Remind me in how many days?",
+        placeholder='e.g. "3" for 3 days from now',
+        required=True,
+        max_length=3,
+    )
+
+    def __init__(self, job: dict):
+        super().__init__()
+        self.job = job
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            n = max(1, min(60, int(self.when.value.strip())))
+        except ValueError:
+            await interaction.response.send_message("Enter a number of days (1-60).", ephemeral=True)
+            return
+        jid     = self.job.get("job_id", "")
+        uid     = str(MY_USER_ID)
+        remind_at = (datetime.datetime.now(timezone.utc) + datetime.timedelta(days=n)).isoformat()
+        db.add_reminder(uid, jid, remind_at, message="custom")
+        await interaction.response.send_message(
+            f"⏰ Reminder set for **{n} day{'s' if n != 1 else ''}** from now for **{self.job.get('title','')}** at **{self.job.get('company','')}**.",
+            ephemeral=True,
+        )
 
 
 class CompanyNoteModal(discord.ui.Modal, title="Company Note"):
@@ -820,6 +909,10 @@ class MoreView(discord.ui.View):
     async def note_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(CompanyNoteModal(self.job))
 
+    @discord.ui.button(label="⏰ Remind", style=discord.ButtonStyle.secondary, row=2)
+    async def remind_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(RemindModal(self.job))
+
     @discord.ui.button(label="🤖 Match", style=discord.ButtonStyle.secondary, row=2)
     async def match_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(thinking=True, ephemeral=True)
@@ -1047,8 +1140,12 @@ async def _run_scan(label: str = "") -> int:
     loop     = asyncio.get_event_loop()
     new_jobs: list[dict] = []
 
+    _blacklist = set(c.lower() for c in db.get_blacklist(str(MY_USER_ID)))
+
     def _on_batch(company: str, raw_jobs: list[dict]):
         for job in raw_jobs:
+            if job.get("company", "").lower() in _blacklist:
+                continue
             if not _is_internship(job.get("title", "")):
                 continue
             if not _2027_filter(job):
@@ -1322,19 +1419,36 @@ async def weekly_stats_loop():
 
 @tasks.loop(minutes=15)
 async def snooze_check_loop():
-    """Wake up snoozed jobs whose reminder time has passed."""
+    """Wake up snoozed jobs and fire custom reminders."""
     try:
         reminders = db.get_due_reminders()
+        uid = str(MY_USER_ID)
+        updated = False
         for r in reminders:
-            if r.get("message") != "snooze":
-                continue
-            uid = str(MY_USER_ID)
             jid = r.get("job_id", "")
-            uj  = db.get_user_job(uid, jid)
-            if uj and uj.get("status") == "snoozed":
-                db.set_user_status(uid, jid, "new")
+            msg = r.get("message", "")
+            if msg == "snooze":
+                uj = db.get_user_job(uid, jid)
+                if uj and uj.get("status") == "snoozed":
+                    db.set_user_status(uid, jid, "new")
+                    updated = True
+            elif msg == "custom":
+                job = db.get_job(jid)
+                if job:
+                    dm = await _get_dm()
+                    em = discord.Embed(
+                        title="⏰ Reminder",
+                        description=(
+                            f"You asked to be reminded about "
+                            f"**{job.get('title','')}** at **{job.get('company','')}**."
+                        ),
+                        color=discord.Color.blurple(),
+                        url=job.get("url") or None,
+                    )
+                    reminder_msg = await dm.send(embed=em)
+                    asyncio.create_task(_delete_after(reminder_msg, 3600))
             db.mark_reminder_sent(r["id"])
-        if reminders:
+        if updated:
             await _update_summary()
     except Exception:
         log.exception("Snooze check error")
@@ -1424,60 +1538,6 @@ async def slash_version(interaction: discord.Interaction):
         em.add_field(name="Uptime", value=uptime_str,        inline=True)
     em.add_field(name="Log",        value=f"`{_LOG_PATH}`",  inline=False)
     await interaction.response.send_message(embed=em, ephemeral=True)
-
-
-@tree.command(name="status", description="Bot health — active companies, errors, scan info")
-async def slash_status(interaction: discord.Interaction):
-    if not _owner_only(interaction):
-        await interaction.response.send_message("Personal bot.", ephemeral=True); return
-    await interaction.response.defer(ephemeral=True)
-
-    health     = db.get_company_health()
-    last_scan  = db.get_bot_state("last_scan_time") or "Never"
-    last_count = db.get_bot_state("last_scan_new")  or "0"
-
-    # Next scan estimate
-    if scan_loop.next_iteration:
-        nxt = scan_loop.next_iteration.astimezone(timezone.utc)
-        now = datetime.datetime.now(timezone.utc)
-        mins = max(0, int((nxt - now).total_seconds() // 60))
-        next_str = f"~{mins}m"
-    else:
-        next_str = "unknown"
-
-    active     = health["active"]
-    deactivated= health["deactivated"]
-    erroring   = health["erroring"]
-    top_errors = health["top_errors"]
-
-    # Traffic light
-    if erroring == 0 and deactivated == 0:
-        status_icon = "🟢"
-    elif deactivated > 20 or erroring > 10:
-        status_icon = "🔴"
-    else:
-        status_icon = "🟡"
-
-    em = discord.Embed(
-        title=f"{status_icon} PerTern Health",
-        color=discord.Color.green() if status_icon == "🟢" else
-              discord.Color.red()   if status_icon == "🔴" else
-              discord.Color.yellow(),
-        timestamp=datetime.datetime.now(timezone.utc),
-    )
-    em.add_field(name="✅ Active",      value=str(active),      inline=True)
-    em.add_field(name="⚠️ Erroring",   value=str(erroring),    inline=True)
-    em.add_field(name="❌ Deactivated", value=str(deactivated), inline=True)
-    em.add_field(name="Last Scan",      value=last_scan,        inline=True)
-    em.add_field(name="New Jobs",       value=last_count,       inline=True)
-    em.add_field(name="Next Scan",      value=next_str,         inline=True)
-
-    if top_errors:
-        lines = "\n".join(f"`{r['name']}` — {r['fail_count']}x" for r in top_errors)
-        em.add_field(name="Top Failing Companies", value=lines, inline=False)
-
-    em.set_footer(text=f"Scan interval: {SCAN_INTERVAL}m • Deactivates at 6 consecutive failures")
-    await interaction.followup.send(embed=em, ephemeral=True)
 
 
 @tree.command(name="reactivate", description="Reactivate deactivated companies and reset their failure count")
@@ -1950,6 +2010,111 @@ async def slash_status(interaction: discord.Interaction):
         err_lines = "\n".join(f"> • {r['name']} ({r['fail_count']}x)" for r in errored)
         em.add_field(name="⚠️  Erroring Companies", value=err_lines, inline=False)
 
+    await interaction.followup.send(embed=em, ephemeral=True)
+
+
+@tree.command(name="blacklist", description="Permanently hide a company — its jobs will never appear again")
+@app_commands.describe(company="Exact company name to blacklist (e.g. 'Walgreens')")
+async def slash_blacklist(interaction: discord.Interaction, company: str):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    db.add_blacklist(str(MY_USER_ID), company)
+    await interaction.response.send_message(
+        f"🚫 **{company}** blacklisted — future jobs from this company will be ignored.\n"
+        f"Use `/unblacklist {company}` to undo.",
+        ephemeral=True,
+    )
+
+
+@tree.command(name="unblacklist", description="Remove a company from your blacklist")
+@app_commands.describe(company="Company name to remove from blacklist")
+async def slash_unblacklist(interaction: discord.Interaction, company: str):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    removed = db.remove_blacklist(str(MY_USER_ID), company)
+    if removed:
+        await interaction.response.send_message(f"✅ **{company}** removed from blacklist.", ephemeral=True)
+    else:
+        bl = db.get_blacklist(str(MY_USER_ID))
+        bl_str = ", ".join(bl) if bl else "none"
+        await interaction.response.send_message(
+            f"❌ `{company}` not found in your blacklist.\nCurrent blacklist: {bl_str}",
+            ephemeral=True,
+        )
+
+
+@tree.command(name="blacklist-show", description="Show your current company blacklist")
+async def slash_blacklist_show(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    bl = db.get_blacklist(str(MY_USER_ID))
+    if not bl:
+        await interaction.response.send_message("Your blacklist is empty.", ephemeral=True)
+        return
+    em = discord.Embed(
+        title="🚫 Company Blacklist",
+        description="\n".join(f"• {c}" for c in bl),
+        color=discord.Color.dark_red(),
+    )
+    em.set_footer(text=f"{len(bl)} companies hidden")
+    await interaction.response.send_message(embed=em, ephemeral=True)
+
+
+@tree.command(name="setlocation", description="Only show internships in certain cities (or 'any' to reset)")
+@app_commands.describe(cities="Comma-separated city list, e.g. 'New York, San Francisco, Remote' — or 'any' to clear")
+async def slash_setlocation(interaction: discord.Interaction, cities: str):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    uid = str(MY_USER_ID)
+    if cities.strip().lower() == "any":
+        db.set_user_locations(uid, [])
+        _reload_location_prefs()
+        await interaction.response.send_message("📍 Location filter cleared — all locations shown.", ephemeral=True)
+        return
+    parsed = [c.strip() for c in cities.split(",") if c.strip()]
+    db.set_user_locations(uid, parsed)
+    _reload_location_prefs()
+    await interaction.response.send_message(
+        f"📍 Location filter set to: **{', '.join(parsed)}**\n"
+        f"Jobs not matching these cities will be filtered out. Tip: include `Remote` to keep remote roles.",
+        ephemeral=True,
+    )
+
+
+@tree.command(name="setgoal", description="Set your weekly application goal")
+@app_commands.describe(target="Number of applications per week (e.g. 5)")
+async def slash_setgoal(interaction: discord.Interaction, target: int):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    target = max(1, min(50, target))
+    db.set_user_goal(str(MY_USER_ID), target)
+    await interaction.response.send_message(
+        f"🎯 Weekly goal set to **{target}** applications/week. Good luck!", ephemeral=True
+    )
+
+
+@tree.command(name="errors", description="Show the last 10 company scrape errors")
+async def slash_errors(interaction: discord.Interaction):
+    if not _owner_only(interaction):
+        await interaction.response.send_message("Personal bot.", ephemeral=True); return
+    await interaction.response.defer(ephemeral=True)
+    errors = db.get_recent_scrape_errors(limit=15)
+    if not errors:
+        await interaction.followup.send("✅ No scrape errors recorded yet.", ephemeral=True)
+        return
+    lines = []
+    for e in errors:
+        ts   = (e.get("created_at") or "")[:16]
+        name = e.get("company", "?")
+        err  = (e.get("error") or "")[:80]
+        lines.append(f"`{ts}` **{name}** — {err}")
+    em = discord.Embed(
+        title="⚠️ Recent Scrape Errors",
+        description="\n".join(lines),
+        color=discord.Color.orange(),
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+    em.set_footer(text="Errors auto-clear after 200 entries")
     await interaction.followup.send(embed=em, ephemeral=True)
 
 

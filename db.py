@@ -180,6 +180,9 @@ def init_db():
             "CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT)",
             "CREATE TABLE IF NOT EXISTS reported_jobs (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, job_id TEXT NOT NULL, reason TEXT, created_at TEXT)",
             "CREATE TABLE IF NOT EXISTS company_notes (user_id TEXT NOT NULL, company TEXT NOT NULL, note TEXT NOT NULL, updated_at TEXT, PRIMARY KEY (user_id, company))",
+            "CREATE TABLE IF NOT EXISTS company_blacklist (user_id TEXT NOT NULL, company TEXT NOT NULL, created_at TEXT, PRIMARY KEY (user_id, company))",
+            "CREATE TABLE IF NOT EXISTS scrape_errors (id INTEGER PRIMARY KEY AUTOINCREMENT, company TEXT NOT NULL, source TEXT, error TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS idx_scrape_errors_time ON scrape_errors(created_at DESC)",
         ]:
             try:
                 cur.execute(stmt)
@@ -1008,3 +1011,108 @@ def set_company_note(user_id: str, company: str, note: str):
                 "DELETE FROM company_notes WHERE user_id=? AND LOWER(company)=LOWER(?)",
                 (str(user_id), company),
             )
+
+
+# ── Company blacklist ──────────────────────────────────────────────────────────
+
+def add_blacklist(user_id: str, company: str):
+    now = datetime.datetime.utcnow().isoformat()
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "INSERT OR IGNORE INTO company_blacklist (user_id, company, created_at) VALUES (?,?,?)",
+            (str(user_id), company.strip(), now),
+        )
+
+
+def remove_blacklist(user_id: str, company: str):
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "DELETE FROM company_blacklist WHERE user_id=? AND LOWER(company)=LOWER(?)",
+            (str(user_id), company.strip()),
+        )
+        return cur.rowcount
+
+
+def get_blacklist(user_id: str) -> list[str]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT company FROM company_blacklist WHERE user_id=? ORDER BY company",
+            (str(user_id),),
+        )
+        return [r[0] for r in cur.fetchall()]
+
+
+def is_blacklisted(user_id: str, company: str) -> bool:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM company_blacklist WHERE user_id=? AND LOWER(company)=LOWER(?)",
+            (str(user_id), company.strip()),
+        )
+        return cur.fetchone() is not None
+
+
+# ── Scrape error log ───────────────────────────────────────────────────────────
+
+def log_scrape_error(company: str, source: str, error: str):
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            "INSERT INTO scrape_errors (company, source, error) VALUES (?,?,?)",
+            (company, source, error[:500]),
+        )
+        # Keep only the last 200 errors
+        cur.execute(
+            "DELETE FROM scrape_errors WHERE id NOT IN "
+            "(SELECT id FROM scrape_errors ORDER BY id DESC LIMIT 200)"
+        )
+
+
+def get_recent_scrape_errors(limit: int = 10) -> list[dict]:
+    with db_cursor() as cur:
+        cur.execute(
+            "SELECT company, source, error, created_at FROM scrape_errors "
+            "ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        return [dict(r) for r in cur.fetchall()]
+
+
+# ── Location preferences ───────────────────────────────────────────────────────
+
+def get_user_locations(user_id: str) -> list[str]:
+    with db_cursor() as cur:
+        cur.execute("SELECT cities FROM user_prefs WHERE user_id=?", (str(user_id),))
+        r = cur.fetchone()
+        if not r or not r[0]:
+            return []
+        try:
+            return json.loads(r[0])
+        except Exception:
+            return []
+
+
+def set_user_locations(user_id: str, cities: list[str]):
+    now = datetime.datetime.utcnow().isoformat()
+    with db_cursor(commit=True) as cur:
+        cur.execute(
+            """INSERT INTO user_prefs (user_id, cities, created_at, updated_at)
+               VALUES (?,?,?,?)
+               ON CONFLICT(user_id) DO UPDATE SET cities=excluded.cities, updated_at=excluded.updated_at""",
+            (str(user_id), json.dumps(cities), now, now),
+        )
+
+
+# ── Job search ─────────────────────────────────────────────────────────────────
+
+def search_jobs(keyword: str, limit: int = 50) -> list[dict]:
+    kw = f"%{keyword.lower()}%"
+    with db_cursor() as cur:
+        cur.execute(
+            """SELECT j.*, co.priority as co_priority
+               FROM jobs j
+               LEFT JOIN companies co ON LOWER(j.company)=LOWER(co.name)
+               WHERE LOWER(j.title) LIKE ? OR LOWER(j.company) LIKE ? OR LOWER(j.category) LIKE ?
+               ORDER BY co.priority DESC, j.first_seen DESC
+               LIMIT ?""",
+            (kw, kw, kw, limit),
+        )
+        return [dict(r) for r in cur.fetchall()]

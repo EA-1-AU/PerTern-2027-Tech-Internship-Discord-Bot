@@ -80,8 +80,9 @@ def run_all_scrapers(on_batch=None) -> list[dict]:
             if on_batch and jobs:
                 on_batch(company["name"], jobs)
         except Exception as e:
-            # Log the full exception class + message so errors are diagnosable
-            log.warning("  ✗ %-35s  [%s] %s", company["name"], type(e).__name__, e)
+            err_msg = f"[{type(e).__name__}] {e}"
+            log.warning("  ✗ %-35s  %s", company["name"], err_msg)
+            db.log_scrape_error(company["name"], source, err_msg)
             count, deactivated = db.record_company_failure(company["name"], company["source"])
             if deactivated:
                 log.info("Deactivated %s after %d failures", company["name"], count)
