@@ -448,19 +448,30 @@ _EMPTY_QUOTES = [
 ]
 
 
+def _next_scan_timestamp() -> str:
+    """Return a Discord relative timestamp string for the next scheduled scan."""
+    nxt = scan_loop.next_iteration
+    if nxt is None:
+        return ""
+    ts = int(nxt.timestamp())
+    return f"<t:{ts}:R>"
+
+
 def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Embed:
     total      = sum(cats.values())
     total_idx  = db.get_job_count()
     applied    = len(db.get_user_jobs_by_status(str(MY_USER_ID), "applied"))
     interviews = len(db.get_user_jobs_by_status(str(MY_USER_ID), "interview"))
     offers     = len(db.get_user_jobs_by_status(str(MY_USER_ID), "offer"))
+    next_scan  = _next_scan_timestamp()
+    next_line  = f"\n🔄 Next scan {next_scan}" if next_scan else ""
 
     if not cats:
         quote = _EMPTY_QUOTES[datetime.datetime.now().minute % len(_EMPTY_QUOTES)]
         em = discord.Embed(
             title="✨ You're all caught up!",
             description=(
-                f"No unreviewed internships right now — new ones land every {SCAN_INTERVAL} minutes.\n\n"
+                f"No unreviewed internships right now.{next_line}\n\n"
                 f"*{quote}*"
             ),
             color=discord.Color.from_rgb(88, 101, 242),
@@ -481,7 +492,7 @@ def _make_summary_embed(cats: dict[str, int], new_count: int = 0) -> discord.Emb
     desc = "\n".join(lines)
     if new_count:
         desc = f"🆕 **+{new_count} new this scan!**\n\n" + desc
-    desc += f"\n\n**{total} unreviewed** · Pick a category below to start browsing."
+    desc += f"\n\n**{total} unreviewed** · Pick a category below to start browsing.{next_line}"
 
     em = discord.Embed(
         title="📋 PerTern — Internship Feed",
