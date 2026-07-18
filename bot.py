@@ -45,7 +45,7 @@ log = logging.getLogger("pertern")
 
 TOKEN          = os.getenv("DISCORD_TOKEN", "")
 MY_USER_ID     = int(os.getenv("MY_DISCORD_USER_ID", "0"))
-SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "30"))
+SCAN_INTERVAL  = 30  # minutes — scans at :00 and :30 every hour
 DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
 REQUIRE_SALARY  = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
 ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
