@@ -741,6 +741,106 @@ class MoreView(discord.ui.View):
         await interaction.followup.send(embed=em, ephemeral=True)
 
 
+# ── Pipeline browse view ─────────────────────────────────────────────────────
+
+def _make_pipeline_embed(job: dict, index: int, total: int) -> discord.Embed:
+    uid    = str(MY_USER_ID)
+    uj     = db.get_user_job(uid, job.get("job_id", ""))
+    status = (uj or {}).get("status", "applied")
+    STATUS_LABELS = {
+        "applied":   "✅ Applied",
+        "interview": "🗣️ Interview",
+        "offer":     "🎉 Offer",
+        "rejected":  "❌ Rejected",
+    }
+    status_label = STATUS_LABELS.get(status, status.title())
+    notes = (uj or {}).get("notes", "") or ""
+
+    color_map = {
+        "applied":   discord.Color.green(),
+        "interview": discord.Color.blue(),
+        "offer":     discord.Color.gold(),
+        "rejected":  discord.Color.red(),
+    }
+    em = discord.Embed(
+        title=f"{job.get('title', 'Unknown Role')}",
+        description=f"**{job.get('company', '')}**",
+        color=color_map.get(status, discord.Color.green()),
+        url=job.get("url") or None,
+        timestamp=datetime.datetime.now(timezone.utc),
+    )
+    em.add_field(name="Status", value=status_label, inline=True)
+    loc = job.get("location", "") or ""
+    if loc:
+        em.add_field(name="Location", value=loc, inline=True)
+    if notes:
+        em.add_field(name="Notes", value=notes[:500], inline=False)
+    em.set_footer(text=f"Job {index + 1} of {total} · PerTern Pipeline")
+    return em
+
+
+class PipelineView(discord.ui.View):
+    """
+    Browse applied/interview/offer/rejected jobs and update their status.
+    Row 0: ◀ Prev | Filter | ▶ Next
+    Row 1: 🗣️ Interview | 🎉 Offer | ❌ Rejected | ↩️ Reopen
+    """
+
+    def __init__(self, jobs: list[dict], index: int = 0, message: discord.Message | None = None):
+        super().__init__(timeout=180)
+        self.jobs    = jobs
+        self.index   = index
+        self.message = message
+
+    async def on_timeout(self):
+        if self.message:
+            try:
+                await self.message.delete()
+            except discord.NotFound:
+                pass
+
+    def _current_job(self) -> dict:
+        return self.jobs[self.index]
+
+    async def _refresh(self, interaction: discord.Interaction):
+        em = _make_pipeline_embed(self._current_job(), self.index, len(self.jobs))
+        await interaction.response.edit_message(embed=em, view=self)
+
+    async def _set_status(self, interaction: discord.Interaction, status: str):
+        job = self._current_job()
+        jid = job.get("job_id", "")
+        uid = str(MY_USER_ID)
+        db.ensure_user_job(uid, jid)
+        db.set_user_status(uid, jid, status)
+        await self._refresh(interaction)
+
+    @discord.ui.button(label="◀ Prev", style=discord.ButtonStyle.secondary, row=0)
+    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = (self.index - 1) % len(self.jobs)
+        await self._refresh(interaction)
+
+    @discord.ui.button(label="▶ Next", style=discord.ButtonStyle.secondary, row=0)
+    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.index = (self.index + 1) % len(self.jobs)
+        await self._refresh(interaction)
+
+    @discord.ui.button(label="🗣️ Interview", style=discord.ButtonStyle.primary, row=1)
+    async def interview_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._set_status(interaction, "interview")
+
+    @discord.ui.button(label="🎉 Offer", style=discord.ButtonStyle.success, row=1)
+    async def offer_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._set_status(interaction, "offer")
+
+    @discord.ui.button(label="❌ Rejected", style=discord.ButtonStyle.danger, row=1)
+    async def rejected_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._set_status(interaction, "rejected")
+
+    @discord.ui.button(label="↩️ Re-open", style=discord.ButtonStyle.secondary, row=1)
+    async def reopen_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._set_status(interaction, "applied")
+
+
 # ── Category select dropdown ──────────────────────────────────────────────────
 
 class CategorySelect(discord.ui.Select):
@@ -1050,7 +1150,8 @@ async def followup_reminder_loop():
                 color=discord.Color.orange(),
                 url=job.get("url") or None,
             )
-            await dm.send(embed=em)
+            msg = await dm.send(embed=em)
+            asyncio.create_task(_delete_after(msg, 3600))
     except Exception:
         log.exception("Follow-up reminder error")
 
@@ -1627,43 +1728,54 @@ async def slash_log(interaction: discord.Interaction):
     )
 
 
-@tree.command(name="pipeline", description="See your full application funnel with company names")
+@tree.command(name="pipeline", description="Browse and update your applied/interview/offer jobs")
 async def slash_pipeline(interaction: discord.Interaction):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
     await interaction.response.defer(ephemeral=True)
     uid = str(MY_USER_ID)
 
-    def _jobs_list(status: str, limit: int = 20) -> list[dict]:
-        return db.get_user_jobs_by_status(uid, status, limit=limit)
+    # Gather all tracked jobs ordered by most recent status change
+    all_jobs: list[dict] = []
+    for status in ("offer", "interview", "applied", "rejected"):
+        all_jobs.extend(db.get_user_jobs_by_status(uid, status, limit=100))
 
-    applied    = _jobs_list("applied")
-    interviews = _jobs_list("interview")
-    offers     = _jobs_list("offer")
-    rejected   = _jobs_list("rejected")
+    if not all_jobs:
+        await interaction.followup.send(
+            "No tracked applications yet. Hit ✅ Applied on a job to start tracking!",
+            ephemeral=True,
+        )
+        return
 
-    def _fmt(jobs: list[dict]) -> str:
-        if not jobs: return "_None yet_"
-        return "\n".join(f"• {j.get('company','')} — {j.get('title','')}" for j in jobs[:10])
+    counts = {s: 0 for s in ("applied", "interview", "offer", "rejected")}
+    for j in all_jobs:
+        uj = db.get_user_job(uid, j.get("job_id", ""))
+        s  = (uj or {}).get("status", "applied")
+        if s in counts:
+            counts[s] += 1
 
-    em = discord.Embed(
+    summary = (
+        f"✅ Applied **{counts['applied']}** · "
+        f"🗣️ Interview **{counts['interview']}** · "
+        f"🎉 Offer **{counts['offer']}** · "
+        f"❌ Rejected **{counts['rejected']}**\n\n"
+        "Use ◀ ▶ to browse · buttons update status in real time."
+    )
+    header_em = discord.Embed(
         title="📊 Your Application Pipeline",
+        description=summary,
         color=discord.Color.from_rgb(88, 101, 242),
         timestamp=datetime.datetime.now(timezone.utc),
     )
-    em.add_field(name=f"✅ Applied ({len(applied)})",      value=_fmt(applied),    inline=False)
-    em.add_field(name=f"🗣️ Interview ({len(interviews)})", value=_fmt(interviews), inline=False)
-    em.add_field(name=f"🎉 Offer ({len(offers)})",         value=_fmt(offers),     inline=False)
-    em.add_field(name=f"❌ Rejected ({len(rejected)})",    value=_fmt(rejected),   inline=False)
+    await interaction.followup.send(embed=header_em, ephemeral=True)
 
-    if offers:
-        em.set_footer(text="🎉 You have offers — congrats!")
-    elif interviews:
-        em.set_footer(text="🗣️ Keep going — you're in interviews!")
-    else:
-        em.set_footer(text="Keep applying — it's a numbers game!")
-
-    await interaction.followup.send(embed=em, ephemeral=True)
+    # Send the first job as a browseable embed in DM
+    dm  = await _get_dm()
+    em  = _make_pipeline_embed(all_jobs[0], 0, len(all_jobs))
+    msg = await dm.send(embed=em, view=PipelineView(all_jobs, index=0))
+    # Attach message reference so the view can delete on timeout
+    view = PipelineView(all_jobs, index=0, message=msg)
+    await msg.edit(view=view)
 
 
 @tree.command(name="clear-dm", description="Delete all bot messages from your DMs (clean slate)")
