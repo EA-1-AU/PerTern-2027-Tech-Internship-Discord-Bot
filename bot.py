@@ -1358,6 +1358,22 @@ async def followup_reminder_loop():
 
 
 @scan_loop.before_loop
+async def before_scan_loop():
+    await client.wait_until_ready()
+    # Sleep until the next SCAN_INTERVAL-minute clock boundary.
+    # e.g. interval=30, restart at 9:43 → sleep 17min → first scan at 10:00.
+    now     = datetime.datetime.now(timezone.utc)
+    elapsed = (now.minute % SCAN_INTERVAL) * 60 + now.second
+    wait    = SCAN_INTERVAL * 60 - elapsed
+    if wait < 5:          # already within 5 s of a boundary — just fire now
+        wait = 0
+    if wait:
+        log.info("Aligned scan: waiting %dm %ds for next :%02d boundary",
+                 wait // 60, wait % 60,
+                 (now.minute // SCAN_INTERVAL + 1) * SCAN_INTERVAL % 60)
+        await asyncio.sleep(wait)
+
+
 @daily_digest_loop.before_loop
 @weekly_stats_loop.before_loop
 @snooze_check_loop.before_loop
