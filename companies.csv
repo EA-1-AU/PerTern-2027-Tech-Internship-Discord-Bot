@@ -420,7 +420,6 @@ Veritas Technologies,workday,,https://veritas.wd1.myworkdayjobs.com/careers,0
 OpenText,workday,,https://opentext.wd3.myworkdayjobs.com/careers,0
 Micro Focus,workday,,https://microfocus.wd3.myworkdayjobs.com/MicroFocusCareers,0
 
-MicroFocus,workday,,https://microfocus.wd3.myworkdayjobs.com/MicroFocusCareers,0
 Elastic,greenhouse,elastic,,0
 Fastly,greenhouse,fastly,,0
 Kong,ashby,kong,,0
@@ -431,12 +430,9 @@ Immuta,lever,immuta,,0
 Semgrep,greenhouse,semgrep,,0
 
 # ── AI / LLM companies ───────────────────────────────────────────────────────
-OpenAI,greenhouse,openai,,1
-Character AI,greenhouse,character-ai,,0
+Character AI,greenhouse,characterai,,0
 ElevenLabs,greenhouse,elevenlabs,,0
-Stability AI,greenhouse,stability-ai,,0
-xAI,greenhouse,xai-corp,,0
-Mistral AI,greenhouse,mistralai,,0
+Mistral AI,greenhouse,mistral,,0
 Together AI,greenhouse,together-ai,,0
 Groq,greenhouse,groq,,0
 Pika Labs,greenhouse,pika-labs,,0
@@ -444,8 +440,6 @@ Luma AI,greenhouse,luma-ai,,0
 
 # ── Cybersecurity ─────────────────────────────────────────────────────────────
 Huntress,greenhouse,huntress,,1
-Lacework,greenhouse,lacework,,1
-Orca Security,greenhouse,orca-security,,1
 Noname Security,greenhouse,noname-security,,0
 AttackIQ,greenhouse,attackiq,,0
 Dragos,greenhouse,dragos,,1
@@ -460,17 +454,9 @@ Pentera,greenhouse,pentera,,0
 Devo,greenhouse,devo,,0
 
 # ── Quant / Trading firms ─────────────────────────────────────────────────────
-DRW,greenhouse,drw,,1
-IMC Trading,greenhouse,imc-trading,,1
-Susquehanna (SIG),greenhouse,sig-trading,,1
+IMC Trading,greenhouse,imctradingbv,,1
 Point72,greenhouse,point72,,1
-Bridgewater,greenhouse,bridgewater,,0
 AQR Capital,greenhouse,aqr,,0
-Citadel,greenhouse,citadel,,1
-Citadel Securities,greenhouse,citadel-securities,,1
-Five Rings,greenhouse,five-rings,,1
-G-Research,greenhouse,g-research,,1
-Millennium,greenhouse,millennium-management,,0
 
 # ── Investment banks ──────────────────────────────────────────────────────────
 Deutsche Bank,workday,,https://db.wd3.myworkdayjobs.com/DBWebsite,0
@@ -478,8 +464,6 @@ Barclays,workday,,https://barclays.wd3.myworkdayjobs.com/campus,0
 UBS,workday,,https://ubs.wd3.myworkdayjobs.com/UBS_Experienced_Professionals,0
 Jefferies,workday,,https://jefferies.wd1.myworkdayjobs.com/jefferies,0
 Lazard,workday,,https://lazard.wd1.myworkdayjobs.com/experienced,0
-Evercore,greenhouse,evercore,,0
-Moelis,greenhouse,moelis,,0
 Houlihan Lokey,workday,,https://hl.wd1.myworkdayjobs.com/HL_External,0
 RBC Capital Markets,workday,,https://rbc.wd3.myworkdayjobs.com/RBC_Careers,0
 BMO,workday,,https://bmo.wd3.myworkdayjobs.com/External_Career_Site,0
@@ -501,7 +485,7 @@ Encore,ashby,encore,,0
 Speakeasy,ashby,speakeasy,,0
 
 # ── Semiconductors / Hardware ─────────────────────────────────────────────────
-Arm Holdings,greenhouse,arm,,1
+Arm Holdings,workday,,https://arm.wd1.myworkdayjobs.com/Arm_Careers,0
 Microchip Technology,workday,,https://microchip.wd1.myworkdayjobs.com/en-US/microchipjobs,0
 onsemi,workday,,https://onsemi.wd1.myworkdayjobs.com/onsemi_Careers,0
 Cirrus Logic,workday,,https://cirruslogic.wd1.myworkdayjobs.com/Cirrus_Logic_Careers,0
@@ -517,7 +501,6 @@ Illumina,workday,,https://illumina.wd1.myworkdayjobs.com/illumina,0
 Veeva Systems,workday,,https://veeva.wd1.myworkdayjobs.com/veeva,0
 Flatiron Health,greenhouse,flatiron-health,,0
 Tempus,greenhouse,tempus,,0
-23andMe,greenhouse,23andme,,0
 Guardant Health,greenhouse,guardanthealth,,0
 
 # ── Fintech ───────────────────────────────────────────────────────────────────
@@ -544,7 +527,7 @@ Calix,workday,,https://calix.wd1.myworkdayjobs.com/en-US/Calix_Careers,0
 NetScout,workday,,https://netscout.wd5.myworkdayjobs.com/NetScout,0
 
 # ── Tesla / EV / Autonomous ───────────────────────────────────────────────────
-Tesla,greenhouse,tesla-motors,,1
+Tesla,lever,tesla,,1
 Aurora,greenhouse,aurora-innovation,,0
 Mobileye,greenhouse,mobileye,,0
 Zoox,greenhouse,zoox,,0
@@ -553,10 +536,9 @@ May Mobility,greenhouse,may-mobility,,0
 
 
 # ── Aerospace ─────────────────────────────────────────────────────────────────
-Blue Origin,greenhouse,blueorigin,,1
-Rocket Lab,greenhouse,rocket-lab,,1
+Blue Origin,greenhouse,blue-origin,,1
+Rocket Lab,lever,rocketlab,,1
 Joby Aviation,greenhouse,joby-aviation,,0
-Archer Aviation,greenhouse,archer-aviation,,0
 Sierra Nevada Corporation,workday,,https://snc.wd1.myworkdayjobs.com/SNC_External,0
 Relativity Space,greenhouse,relativity-space,,0
 Hermeus,greenhouse,hermeus,,0
@@ -591,11 +573,8 @@ Calendly,greenhouse,calendly,,0
 Superhuman,greenhouse,superhuman,,0
 
 # ── Cybersecurity backup / recovery ───────────────────────────────────────────
-Veeam,greenhouse,veeam,,1
-Cohesity,greenhouse,cohesity,,1
 Druva,greenhouse,druva,,0
 Commvault,workday,,https://commvault.wd1.myworkdayjobs.com/Commvault_Careers,0
-Acronis,greenhouse,acronis,,0
 
 # ── Healthcare devices / diagnostics ─────────────────────────────────────────
 Dexcom,workday,,https://dexcom.wd1.myworkdayjobs.com/DXCM,0
@@ -633,7 +612,6 @@ NICE Systems,workday,,https://nice.wd3.myworkdayjobs.com/NICE,0
 Ceridian,workday,,https://ceridian.wd1.myworkdayjobs.com/Ceridian,0
 Paylocity,workday,,https://paylocity.wd1.myworkdayjobs.com/paylocity,0
 Paychex,workday,,https://paychex.wd5.myworkdayjobs.com/Paychex,0
-ADP,adp,,https://jobs.adp.com,0
 
 Summer 2027 Community List,github_md,,https://raw.githubusercontent.com/sndsh404/summer-2027-internships/main/README.md,1
 vanshb03 Summer 2027,github_md,,https://raw.githubusercontent.com/vanshb03/Summer2027-Internships/dev/README.md,1
