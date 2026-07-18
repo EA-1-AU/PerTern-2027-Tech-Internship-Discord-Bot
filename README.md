@@ -12,7 +12,7 @@
 
 PerTern scrapes **570+ company career pages** every 30 minutes, filters for internships that match your background, and sends each new match directly to you via Discord DM. No server. No channels. Just you.
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot)
+[![Version](https://img.shields.io/badge/version-1.2.0-blueviolet?style=flat)](https://github.com/EA-1-AU/PerTern-2027-Tech-Internship-Discord-Bot)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
 [![discord.py](https://img.shields.io/badge/discord.py-2.x-5865F2?style=flat&logo=discord&logoColor=white)](https://discordpy.readthedocs.io/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org)
@@ -24,11 +24,13 @@ PerTern scrapes **570+ company career pages** every 30 minutes, filters for inte
 
 ## What PerTern does
 
-- **570+ companies scraped** every 30 minutes across Greenhouse, Lever, Ashby, SmartRecruiters, Workday, iCIMS, Oracle, ADP, custom career pages, and the SimplifyJobs GitHub feed
+- **570+ companies scraped** every 30 minutes across Greenhouse, Lever, Ashby, SmartRecruiters, Workday, iCIMS, Oracle, ADP, custom career pages, SimplifyJobs, and InternatLas
 - **Personalized matching** — filters for roles aligned to your skills: Cybersecurity, Cloud/GCP, Data Analytics, Python, SQL, Linux, Network Security, IT Support, AI/ML
 - **Discord DMs only** — no server required, matches land directly in your inbox
-- **Deduplication** — never sends the same listing twice
+- **Deduplication** — never sends the same listing twice, checked by job ID, apply URL, and normalized role title; skipped jobs never resurface even if the title changes slightly (e.g. "SWE Intern Summer 2027" = "Software Engineering Internship")
+- **Skip memory** — jobs you skip are permanently filtered from future scans across all three dedup dimensions
 - **2027 filter** — only surfaces Spring, Summer, and Fall 2027 internships; drops 2026 and undated listings
+- **Rolling deadline** — when no deadline is set but the description says "rolling" or "open until filled", the embed shows ⏰ Rolling so you know to apply early
 - **Auto-deadline detection** — scans job descriptions for deadline phrases and flags them with ⏰; embed turns orange (⚠️) if ≤7 days away, red (🚨) if ≤3 days
 - **Smart location** — if the scraper returns a generic location, the title is parsed to extract the real city/state or Remote/Hybrid status
 - **Rotating bot status** — cycling presence messages including live Raspberry Pi temperature and CPU usage
