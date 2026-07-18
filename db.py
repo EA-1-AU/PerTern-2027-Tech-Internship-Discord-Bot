@@ -266,6 +266,13 @@ def reactivate_company_by_name(name):
         return cur.rowcount
 
 
+def reactivate_all_companies():
+    """Reactivate every deactivated company and reset all failure counts."""
+    with db_cursor(commit=True) as cur:
+        cur.execute("UPDATE companies SET active=1, fail_count=0 WHERE active=0")
+        return cur.rowcount
+
+
 def get_company_health():
     """Return a dict with company health stats for /status."""
     with db_cursor() as cur:

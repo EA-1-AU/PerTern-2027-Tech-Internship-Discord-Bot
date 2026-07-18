@@ -2,10 +2,12 @@
 One-time (or repeatable) import of companies.csv into the companies table.
 
     python seed_companies.py [path/to/companies.csv]
+    python seed_companies.py --reset-all          # reactivate all deactivated companies first
 
 Safe to re-run — upserts on (name, source) so URL/slug fixes in the CSV
-are applied on every run without losing existing data. Also re-activates
-previously deactivated companies so the CSV is always the source of truth.
+are applied on every run. Companies are only reactivated when their slug
+or URL changed (i.e. you fixed them). Use --reset-all to force-reactivate
+every deactivated entry regardless.
 """
 
 import csv
@@ -45,8 +47,17 @@ def seed(csv_path: Path | None = None) -> int:
 
 
 def main():
-    csv_path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    args = sys.argv[1:]
+    reset_all = "--reset-all" in args
+    csv_args  = [a for a in args if not a.startswith("--")]
+    csv_path  = Path(csv_args[0]) if csv_args else None
+
     db.init_db()
+
+    if reset_all:
+        count = db.reactivate_all_companies()
+        print(f"Reset: reactivated {count} previously deactivated companies.")
+
     added = seed(csv_path)
     print(f"Processed {added} rows.")
     print(f"Companies table now has {len(db.get_all_active_companies())} active entries.")

@@ -5,7 +5,7 @@ Scrapes 310+ companies and DMs matching internships directly to you.
 .env variables:
   DISCORD_TOKEN            — your bot token
   MY_DISCORD_USER_ID       — your Discord user ID
-  SCAN_INTERVAL_MINUTES    — how often to scan (default 10)
+  SCAN_INTERVAL_MINUTES    — how often to scan (default 30)
   DIGEST_HOUR_UTC          — hour (UTC) for daily digest DM (default 13 = 8am ET)
   REQUIRE_SALARY           — set to "true" to only show roles that list a salary
 """
@@ -45,7 +45,7 @@ log = logging.getLogger("pertern")
 
 TOKEN          = os.getenv("DISCORD_TOKEN", "")
 MY_USER_ID     = int(os.getenv("MY_DISCORD_USER_ID", "0"))
-SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "10"))
+SCAN_INTERVAL  = int(os.getenv("SCAN_INTERVAL_MINUTES", "30"))
 DIGEST_HOUR    = int(os.getenv("DIGEST_HOUR_UTC", "13"))
 REQUIRE_SALARY  = os.getenv("REQUIRE_SALARY", "false").lower() == "true"
 ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
@@ -1453,21 +1453,36 @@ async def slash_status(interaction: discord.Interaction):
     await interaction.followup.send(embed=em, ephemeral=True)
 
 
-@tree.command(name="reactivate", description="Reactivate a deactivated company and reset its failure count")
-@app_commands.describe(company="Company name (partial match OK, e.g. 'Boeing')")
-async def slash_reactivate(interaction: discord.Interaction, company: str):
+@tree.command(name="reactivate", description="Reactivate deactivated companies and reset their failure count")
+@app_commands.describe(
+    company="Company name to reactivate (partial match OK, e.g. 'Boeing'). Leave blank with all=True to reactivate all.",
+    all="Set to True to reactivate every deactivated company at once",
+)
+async def slash_reactivate(interaction: discord.Interaction, company: str = "", all: bool = False):
     if not _owner_only(interaction):
         await interaction.response.send_message("Personal bot.", ephemeral=True); return
 
-    count = db.reactivate_company_by_name(company)
-    if count:
+    if all:
+        count = db.reactivate_all_companies()
         await interaction.response.send_message(
-            f"✅ Reactivated **{count}** compan{'y' if count == 1 else 'ies'} matching `{company}`.",
+            f"✅ Reactivated **{count}** deactivated compan{'y' if count == 1 else 'ies'}.",
             ephemeral=True,
         )
+    elif company:
+        count = db.reactivate_company_by_name(company)
+        if count:
+            await interaction.response.send_message(
+                f"✅ Reactivated **{count}** compan{'y' if count == 1 else 'ies'} matching `{company}`.",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"❌ No company found matching `{company}`. Check the name and try again.",
+                ephemeral=True,
+            )
     else:
         await interaction.response.send_message(
-            f"❌ No company found matching `{company}`. Check the name and try again.",
+            "Provide a company name **or** set `all: True` to reactivate everything.",
             ephemeral=True,
         )
 
